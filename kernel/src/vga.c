@@ -1,7 +1,7 @@
 #include "../include/vga.h"
 
 // TODO:
-// - double buffering (requires malloc)
+// - double buffering
 
 uint16_t vga_color(const enum vga_color fg, const enum vga_color bg) {
     return bg << 4 | fg;
