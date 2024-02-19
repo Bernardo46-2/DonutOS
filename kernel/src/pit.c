@@ -11,6 +11,7 @@ void pit_interrupt_handler() {
     // TODO
 } 
 
+// TODO: finish implementing this once I have PIC set up
 void pit_init() {
     idt_set_gate(0x0, (size_t)pit_interrupt_handler, (uint16_t)gdt_code_addr(), 0);
 }

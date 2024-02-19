@@ -8,7 +8,7 @@ void read_consts() {
     GDT_CODE_ADDR = *(size_t*)(0x7ff0);
     
     if(GDT_CODE_ADDR == 0) {
-        //TODO: blue screen
+        // TODO: blue screen
     }
 }
 
