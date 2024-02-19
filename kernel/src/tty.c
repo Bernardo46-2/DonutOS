@@ -5,8 +5,6 @@ static uint16_t* tty_buffer;
 static size_t tty_ptr;
 static uint16_t tty_color;
 
-// test
-
 #define TTY_ROW (tty_ptr / VGA_HEIGHT)
 #define TTY_COL (tty_ptr % VGA_WIDTH)
 

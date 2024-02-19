@@ -55,13 +55,13 @@ N_SECTORS:
 
 ; ---------------------------------------------------------------------------------------------------------------------------------
 
-CODE_SEG equ gdt_code - gdt_start
-DATA_SEG equ gdt_data - gdt_start
+CODE_SEG: equ gdt_code - gdt_start
+DATA_SEG: equ gdt_data - gdt_start
 
 gdt_setup:
     cli
     lgdt [gdt_descriptor]
-    mov eax, cr0                         ; cant write directly to cr0, so load eax first
+    mov eax, cr0                         ; cant write directly to cr0, so load it to eax first
     or eax, 1                            ; last bit of cr0 needs to be 1 to allow protected mode
     mov cr0, eax                         ; write back to cr0
     jmp CODE_SEG:start_protected_mode
@@ -80,11 +80,11 @@ gdt_start:                               ; needs to be after real mode code
         db 0                             ; last 8 bits of the base
         
     gdt_data:
-        dw 0xffff
+        dw 0xffff                        ; 16 bits of the limit
         dw 0
         db 0
-        db 0b10010010
-        db 0b11001111
+        db 0b10010010                    ; presence, privilege, type and typeflags
+        db 0b11001111                    ; other flags and limit
         db 0
 
 gdt_end:
@@ -105,6 +105,9 @@ start_protected_mode:
     mov gs, ax                           ; setting gs (extra extra extra data segment reg) to 0
     mov ebp, 0x90000                     ; setting the base of the stack to 0x90000
     mov esp, ebp                         ; emptying the stack
+
+    mov dword [0x7ff0], gdt_code         ; saving constant at specific address for reading from kernel later
+    
     jmp KERNEL_LOCATION
 
 times 510-($-$$) db 0

@@ -11,13 +11,15 @@ BUILD_DIR = ../build/kernel
 SRC_DIR = src
 KERNEL_DIR = kernel
 
-SRC_FILES = $(wildcard $(SRC_DIR)/*.c)
+SRC_FILES = $(wildcard $(SRC_DIR)/*.*)
 KERNEL_FILES = $(wildcard $(KERNEL_DIR)/*.*)
 
 LIBC_OBJS = $(wildcard ../build/libc/*.o)
 KERNEL_OBJS = \
-	$(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SRC_FILES)) \
-	$(patsubst $(KERNEL_DIR)/%, $(BUILD_DIR)/%.o, $(basename $(KERNEL_FILES)))
+    $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(filter %.c,$(SRC_FILES))) \
+    $(patsubst $(SRC_DIR)/%.s, $(BUILD_DIR)/%.o, $(filter %.s,$(SRC_FILES))) \
+    $(patsubst $(KERNEL_DIR)/%, $(BUILD_DIR)/%.o, $(basename $(KERNEL_FILES)))
+
 
 FIRST_LINKER_OBJS = $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o
 OTHER_LINKER_OBJS = $(filter-out $(FIRST_LINKER_OBJS), $(KERNEL_OBJS))
@@ -36,6 +38,9 @@ $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.s
+	$(AS) $< $(ASFLAGS) -o $@
+
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.s
 	$(AS) $< $(ASFLAGS) -o $@
 
 rebuild: clean all
