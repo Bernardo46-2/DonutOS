@@ -16,16 +16,20 @@ inline size_t gdt_code_addr() {
     return GDT_CODE_ADDR;
 }
 
-void cli() {
+inline void cli() {
     __asm__ __volatile__ ("cli");
 }
 
-void outb(uint16_t port, uint8_t data) {
+inline void outb(uint16_t port, uint8_t data) {
     __asm__ __volatile__ ("outb %0, %1" : : "a"(data), "Nd"(port));
 }
 
-uint8_t inb(uint16_t port) {
+inline uint8_t inb(uint16_t port) {
     uint8_t data;
     __asm__ __volatile__ ("inb %1, %0" : "=a"(data) : "Nd"(port));
     return data;
+}
+
+inline void io_wait() {
+    outb(0x80, 0);
 }

@@ -1,7 +1,8 @@
-// Kernel
+// Kernel stuff
 #include "../include/tty.h"
 #include "../include/idt.h"
 #include "../include/asm.h"
+#include "../include/irq.h"
 
 // LibC
 #include "../../libc/include/stdlib.h"
@@ -12,15 +13,15 @@
 
 void init_os() {
     read_consts();
-    tty_init();
-    heap_init();
+    pic_init();
     idt_install();
     idt_init();
+    tty_init();
+    heap_init();
 }
 
 extern void main() {
     init_os();
-    // donut();
-    printf("%d\n", (int)gdt_code_addr());
+    donut();
     while(1);
 }
