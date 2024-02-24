@@ -1,4 +1,4 @@
-#include "../include/irq.h"
+#include "../include/pic.h"
 #include "../include/asm.h"
 
 // master pic handles irq < 8
@@ -66,9 +66,9 @@ void pic_remap(int offset1, int offset2) {
 
 void pic_init() {
     pic_remap(0x20, 0x28);
-
     for(size_t i = 0; i < 16; i++)
         irq_set_mask(i);
+    sti();
 }
 
 // =============================================================== //
@@ -133,3 +133,4 @@ uint16_t pic_get_isr() {
 uint16_t pic_get_irr() {
     return __pic_get_irq_reg(PIC_READ_IRR);
 }
+

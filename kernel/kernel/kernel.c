@@ -2,7 +2,7 @@
 #include "../include/tty.h"
 #include "../include/idt.h"
 #include "../include/asm.h"
-#include "../include/irq.h"
+#include "../include/pic.h"
 
 // LibC
 #include "../../libc/include/stdlib.h"
@@ -14,7 +14,6 @@
 void init_os() {
     read_consts();
     pic_init();
-    idt_install();
     idt_init();
     tty_init();
     heap_init();

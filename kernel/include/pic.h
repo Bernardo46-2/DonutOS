@@ -1,5 +1,5 @@
-#ifndef _IRQ_H_
-#define _IRQ_H_
+#ifndef _PIC_H_
+#define _PIC_H_
 
 #include "../../libc/include/types.h"
 
