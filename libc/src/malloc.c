@@ -12,11 +12,11 @@ typedef struct {
 } AllocHeader;
 #pragma pack()
 
-static inline uint8_t alloc_is_free(const uint8_t* const ptr) {
+static inline uint8_t __alloc_is_free(const uint8_t* const ptr) {
     return ((AllocHeader*)ptr)->is_free;
 }
 
-static inline uint32_t alloc_size(const uint8_t* const ptr) {
+static inline uint32_t __alloc_size(const uint8_t* const ptr) {
     return ((AllocHeader*)ptr)->size;
 }
 
@@ -26,20 +26,20 @@ void heap_init() {
     p->size = HEAP_MAX_SIZE;
 }
 
-static uint8_t* malloc_find_empty_space(uint8_t* p) {
-    while(p < STACK_BASE_PTR && !alloc_is_free(p)) {
-        p += alloc_size(p);
+static uint8_t* __malloc_find_empty_space(uint8_t* p) {
+    while(p < STACK_BASE_PTR && !__alloc_is_free(p)) {
+        p += __alloc_size(p);
     }
     return p;
 }
 
-static uint8_t* malloc_concat_free_chunks(uint8_t* p) {
-    if(p < STACK_BASE_PTR && alloc_is_free(p)) {
+static uint8_t* __malloc_concat_free_chunks(uint8_t* p) {
+    if(p < STACK_BASE_PTR && __alloc_is_free(p)) {
         AllocHeader* alloc_p = (AllocHeader*)p;
         uint8_t* concat_ptr = p + alloc_p->size;
         
-        while(concat_ptr < STACK_BASE_PTR && alloc_is_free(concat_ptr)) {
-            uint32_t concat_size = alloc_size(concat_ptr);
+        while(concat_ptr < STACK_BASE_PTR && __alloc_is_free(concat_ptr)) {
+            uint32_t concat_size = __alloc_size(concat_ptr);
             alloc_p->size += concat_size;
             concat_ptr += concat_size;
         }
@@ -55,11 +55,11 @@ void* malloc(size_t size) {
     uint8_t alloc_successful = 0;
 
     while(p < STACK_BASE_PTR && !alloc_successful) {
-        p = malloc_find_empty_space(p);
-        p = malloc_concat_free_chunks(p);
+        p = __malloc_find_empty_space(p);
+        p = __malloc_concat_free_chunks(p);
 
-        if(p < STACK_BASE_PTR && alloc_is_free(p)) {
-            if(size < alloc_size(p)) {
+        if(p < STACK_BASE_PTR && __alloc_is_free(p)) {
+            if(size < __alloc_size(p)) {
                 AllocHeader* header = (AllocHeader*)p;
                 uint32_t next_size = header->size - size;
 
@@ -76,7 +76,7 @@ void* malloc(size_t size) {
                 
                 alloc_successful = 1;
             } else {
-                p += alloc_size(p);
+                p += __alloc_size(p);
             }
         }
     }

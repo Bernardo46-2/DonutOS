@@ -67,7 +67,7 @@ void pic_remap(int offset1, int offset2) {
 void pic_init() {
     pic_remap(0x20, 0x28);
     for(size_t i = 0; i < 16; i++)
-        irq_set_mask(i);
+        pic_set_mask(i);
     sti();
 }
 
@@ -78,7 +78,7 @@ void pic_init() {
 // 1 on the bit of index 4 of the Interrupt Mask Register (IMR)
 
 // disabling irq_line
-void irq_set_mask(uint8_t irq_line) {
+void pic_set_mask(uint8_t irq_line) {
     uint16_t port;
     uint8_t value;
 
@@ -94,7 +94,7 @@ void irq_set_mask(uint8_t irq_line) {
 }
 
 // enabling irq_line
-void irq_clear_mask(uint8_t irq_line) {
+void pic_clear_mask(uint8_t irq_line) {
     uint16_t port;
     uint8_t value;
     

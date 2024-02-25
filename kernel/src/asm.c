@@ -1,8 +1,6 @@
 #include "../include/asm.h"
 
-// TODO: double check this entire thing
-
-size_t GDT_CODE_ADDR = 0;
+static size_t GDT_CODE_ADDR = 0;
 
 void read_consts() {
     GDT_CODE_ADDR = *(size_t*)(0x7ff0);
@@ -38,7 +36,7 @@ inline void io_wait() {
     outb(0x80, 0);
 }
 
-uint16_t get_if() {
+inline uint16_t get_if() {
     uint16_t flags;
     __asm__ __volatile__ ( "pushf\n\t"
                            "pop %0"

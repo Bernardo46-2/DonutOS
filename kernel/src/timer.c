@@ -1,0 +1,21 @@
+#include "../include/timer.h"
+#include "../include/pit.h"
+#include "../include/isr.h"
+#include "../include/irq.h"
+
+#define TPS 363
+
+static volatile size_t ticks = 0;
+
+void timer_handler(regs_t* rs) {
+    ticks++;
+}
+
+inline size_t timer_get() {
+    return ticks;
+}
+
+void timer_init() {
+    pit_set(TPS);
+    irq_install(0, timer_handler);
+}

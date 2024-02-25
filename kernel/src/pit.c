@@ -2,16 +2,26 @@
 #include "../include/idt.h"
 #include "../include/asm.h"
 
-#define PIT_IRQ 0
+#define PIT_FREQ      1193182
 
-// 1000 Hz == 1ms
-#define PIT_FREQ 1000
+#define PIT_CHANNEL_0 0x40
+#define PIT_CHANNEL_1 0x41
+#define PIT_CHANNEL_2 0x42
+#define PIT_COMMAND   0x43
 
-void pit_interrupt_handler() {
-    // TODO
-} 
-
-// TODO: finish implementing this once I have PIC set up
-void pit_init() {
-    idt_set_gate(0x0, (size_t)pit_interrupt_handler, (uint16_t)gdt_code_addr(), 0);
+static void __pit_set_command(uint8_t channel, uint8_t access_mode, uint8_t op_mode, uint8_t bcd) {
+    uint8_t command_byte = 0;
+    command_byte |= bcd & 0x1;
+    command_byte |= (op_mode & 0x7) << 1;
+    command_byte |= (access_mode & 0x3) << 4;
+    command_byte |= (channel & 0x3) << 6;
+    outb(PIT_COMMAND, command_byte);
 }
+
+void pit_set(int hz) {
+    int divisor = PIT_FREQ / hz;
+    __pit_set_command(0, 3, 2, 0); // maybe change to (0, 3, 3, 0), i.e. square wave
+    outb(PIT_CHANNEL_0, divisor & 0xff);
+    outb(PIT_CHANNEL_0, divisor >> 8 & 0xff);
+}
+

@@ -1,7 +1,7 @@
 #include "../include/idt.h"
 #include "../../libc/include/string.h"
 
-// this is defined in DonutOS/kernel/src/idt_loader.s
+// in DonutOS/kernel/src/idt_loader.s
 extern void load_idt();
 
 #pragma pack(1)
@@ -21,30 +21,26 @@ typedef struct {
 } idt_ptr_t;
 #pragma pack()
 
-idt_entry_t idt[256];
+idt_entry_t idt_entries[256];
 idt_ptr_t idtp;
 
 void idt_install() {
-    idtp.base = (size_t)(&idt);
-    idtp.limit = sizeof idt - 1;
-    memset(&idt, 0, sizeof idt);
-    load_idt();
+    idtp.base = (size_t)(&idt_entries);
+    idtp.limit = sizeof idt_entries - 1;
+    memset(&idt_entries, 0, sizeof idt_entries);
 } 
 
 void idt_init() {
+    idt_install();
     load_idt();
 }
 
-void idt_set_gate(uint8_t index, size_t base, uint16_t sel, uint8_t flags) {
-    idt[index].base_lo = base & 0xffff;
-    idt[index].sel = sel;
-    idt[index].zero = 0;
-    idt[index].flags = flags;
-    idt[index].base_hi = base >> 16;
-}
-
-uint8_t idt_entry_create_flags(uint8_t gate_type, uint8_t dpl, uint8_t present) {
-    uint8_t flags = 0;
-    // TODO
-    return flags;
+void idt_set_gate(uint8_t index, void (*base)(regs_t* rs), uint16_t sel, uint8_t flags) {
+    idt_entries[index] = (idt_entry_t) {
+        .base_lo = ((size_t)base) & 0xffff,
+        .sel = sel,
+        .zero = 0,
+        .flags = flags | 0x6,
+        .base_hi = ((size_t)base) >> 16 & 0xff
+    };
 }
