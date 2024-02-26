@@ -6,6 +6,7 @@
 
 #define NUM_ISRS 48
 
+// these are all in DonutOS/kernel/src/isr_wrapper.s
 extern void _isr0(regs_t* rs);
 extern void _isr1(regs_t* rs);
 extern void _isr2(regs_t* rs);
@@ -63,37 +64,37 @@ static void (*isrs[NUM_ISRS])(regs_t* rs) = {
 };
 
 static const char* exception_msgs[33] = {
-    "Divide by zero",
+    "Division Error",
     "Debug",
     "NMI",
     "Breakpoint",
     "Overflow",
-    "OOB",
-    "Invalid opcode",
-    "No coprocessor",
+    "Bound Range Exceeded",
+    "Invalid Opcode",
+    "Device Not Available",
     "Double fault",
-    "Coprocessor segment overrun",
-    "Bad TSS",
-    "Segment not present",
-    "Stack fault",
-    "General protection fault",
-    "Page fault",
-    "Unrecognized interrupt",
-    "Coprocessor fault",
-    "Alignment check",
-    "Machine check",
+    "Coprocessor Segment Overrun",
+    "Invalid TSS",
+    "Segment Not Present",
+    "Stack-Segment Fault",
+    "General Protection Fault",
+    "Page Fault",
+    "RESERVED",
+    "x86 Floating-Point Exception",
+    "Alignment Check",
+    "Machine Check",
+    "SIMD Floating-Point Exception",
+    "Virtualization Exception",
+    "Control Protection Exception",
     "RESERVED",
     "RESERVED",
     "RESERVED",
     "RESERVED",
     "RESERVED",
     "RESERVED",
-    "RESERVED",
-    "RESERVED",
-    "RESERVED",
-    "RESERVED",
-    "RESERVED",
-    "RESERVED",
+    "Hypervision Injection Exception",
+    "VMM Communication Exception",
+    "Security Exception",
     "RESERVED",
     "this should never be printed"
 };

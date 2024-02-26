@@ -1,6 +1,7 @@
 #include "../include/time.h"
+#include "../../kernel/include/timer.h"
 
-// TODO: write this the proper way..
-void usleep(size_t time) {
-    for(size_t i = 0; i < time * 100; i++);
+void milisleep(size_t time) {
+    size_t stop_time = timer_get() + time;
+    while(timer_get() < stop_time);
 }

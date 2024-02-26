@@ -21,16 +21,13 @@ void puts(const char* const str) {
 int printf(const char* fmt, ...) {
     if(fmt == NULL) return EOF;
     
-    register char* str = (char*)malloc(BUFF_SIZE * sizeof(char));
-    if(str == NULL) return EOF;
-    
-    char* helper_str = (char*)malloc(100 * sizeof(char));
-    if(helper_str == NULL) return EOF;
+    char str[BUFF_SIZE];
+    char helper_str[100];
     
     const size_t helper_str_len = 100;
     va_list ap;
     va_start(ap, fmt);
-    char* s = str;
+    register char* s = str;
     char* tmp = NULL;
     char c;
     int result = 0;
@@ -77,8 +74,6 @@ int printf(const char* fmt, ...) {
     *s = '\0';
     result = tty_putstr(str);
 
-    free(str);
-    free(helper_str);
     va_end(ap);
 
     return result;

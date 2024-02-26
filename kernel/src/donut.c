@@ -53,7 +53,7 @@ void donut() {
       putchar(k % 80 ? b[k] : 10);
     R(5, 7, cA, sA);
     R(5, 8, cB, sB);
-    usleep(15000);
+    milisleep(15);
     printf("\x1b[23A");
   }
 }

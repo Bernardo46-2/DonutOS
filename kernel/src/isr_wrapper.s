@@ -77,7 +77,7 @@ isr_common:
     push fs
     push gs
 
-    mov ax, 0x10 ; maybe change to 0x8
+    mov ax, 0x10
     mov ds, ax
     mov es, ax
     mov fs, ax

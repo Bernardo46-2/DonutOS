@@ -3,6 +3,6 @@
 
 #include "types.h"
 
-void usleep(size_t time);
+void milisleep(size_t time);
 
 #endif

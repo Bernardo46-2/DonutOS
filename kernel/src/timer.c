@@ -3,7 +3,7 @@
 #include "../include/isr.h"
 #include "../include/irq.h"
 
-#define TPS 363
+#define TPS 1000
 
 static volatile size_t ticks = 0;
 

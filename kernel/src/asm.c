@@ -1,19 +1,5 @@
 #include "../include/asm.h"
 
-static size_t GDT_CODE_ADDR = 0;
-
-void read_consts() {
-    GDT_CODE_ADDR = *(size_t*)(0x7ff0);
-    
-    if(GDT_CODE_ADDR == 0) {
-        // TODO: blue screen
-    }
-}
-
-inline size_t gdt_code_addr() {
-    return GDT_CODE_ADDR;
-}
-
 inline void cli() {
     __asm__ __volatile__ ("cli");
 }

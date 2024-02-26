@@ -19,9 +19,8 @@ static void __pit_set_command(uint8_t channel, uint8_t access_mode, uint8_t op_m
 }
 
 void pit_set(int hz) {
-    int divisor = PIT_FREQ / hz;
-    __pit_set_command(0, 3, 2, 0); // maybe change to (0, 3, 3, 0), i.e. square wave
+    uint16_t divisor = PIT_FREQ / hz;
+    __pit_set_command(0, 3, 3, 0); // square wave mode
     outb(PIT_CHANNEL_0, divisor & 0xff);
     outb(PIT_CHANNEL_0, divisor >> 8 & 0xff);
 }
-
