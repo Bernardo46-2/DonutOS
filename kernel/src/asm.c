@@ -29,3 +29,15 @@ inline uint16_t get_if() {
                            : "=g"(flags) );
     return flags & (1 << 9);
 }
+
+inline double asm_sin(double x) {
+    double result;
+    __asm__ __volatile__ ("fsin" : "=t"(result) : "0"(x));
+    return result;
+}
+
+inline double asm_cos(double x) {
+    double result;
+    __asm__ __volatile__ ("fcos" : "=t"(result) : "0"(x));
+    return result;
+}

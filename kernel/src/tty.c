@@ -1,5 +1,7 @@
 #include "../include/tty.h"
+
 #include "../../libc/include/stdlib.h"
+#include "../../libc/include/string.h"
 
 static uint16_t* tty_buffer;
 static size_t tty_ptr;
@@ -38,6 +40,7 @@ void tty_putc(const uint16_t c) {
     }
 }
 
+// TODO: rewrite this thing
 int tty_putstr(char* str) {
     char* s = str;
     
@@ -64,16 +67,21 @@ int tty_putstr(char* str) {
                 switch(*s) {
                     case 'A':
                         tty_ptr -= VGA_WIDTH * x;
-                    break;
+                        break;
                     case 'B':
                         tty_ptr += VGA_WIDTH * x;
-                    break;
+                        break;
                     case 'C':
                         tty_ptr += x;
-                    break;
+                        break;
                     case 'D':
                         tty_ptr -= x;
-                    break;
+                        break;
+                    case 'H':
+                        tty_ptr = 0;
+                        break;
+                    default:
+                        break;
                 }
             }
         }

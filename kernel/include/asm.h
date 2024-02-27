@@ -10,5 +10,7 @@ uint8_t inb(uint16_t port);
 void io_wait();
 size_t gdt_code_addr();
 uint16_t get_if();
+double asm_sin(double x);
+double asm_cos(double x);
 
 #endif

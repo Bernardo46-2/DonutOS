@@ -2,7 +2,7 @@
 #include "../include/idt.h"
 #include "../include/asm.h"
 
-#define PIT_FREQ      1193182
+#define PIT_HZ      1193182
 
 #define PIT_CHANNEL_0 0x40
 #define PIT_CHANNEL_1 0x41
@@ -19,7 +19,7 @@ static void __pit_set_command(uint8_t channel, uint8_t access_mode, uint8_t op_m
 }
 
 void pit_set(int hz) {
-    uint16_t divisor = PIT_FREQ / hz;
+    uint16_t divisor = PIT_HZ / hz;
     __pit_set_command(0, 3, 3, 0); // square wave mode
     outb(PIT_CHANNEL_0, divisor & 0xff);
     outb(PIT_CHANNEL_0, divisor >> 8 & 0xff);

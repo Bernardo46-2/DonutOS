@@ -5,6 +5,7 @@
 #include "../include/isr.h"
 #include "../include/irq.h"
 #include "../include/timer.h"
+#include "../include/kb.h"
 
 // LibC
 #include "../../libc/include/stdlib.h"
@@ -24,16 +25,11 @@ void init_os() {
     isr_init();
     irq_init();
     timer_init();
+    kb_init();
 }
 
 extern void main() {
     init_os();
     donut();
-    
-    // while(1) {
-    //     printf("\n");
-    //     printf("\x1b[1A%d", (int)timer_get());
-    // }
-    
     while(1);
 }
