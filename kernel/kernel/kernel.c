@@ -28,8 +28,14 @@ void init_os() {
     kb_init();
 }
 
+// #include "../include/asm.h"
+
 extern void main() {
     init_os();
-    donut();
+    // outb(0x3d4, 0x0f);
+    // outb(0x3d5, (uint8_t)(136));
+    // outb(0x3d4, 0x0e);
+    // outb(0x3d5, (uint8_t)(2));
+    // donut();
     while(1);
 }

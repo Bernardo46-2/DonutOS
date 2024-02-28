@@ -8,7 +8,7 @@
 
 static void __kb_handler(regs_t* rs) {
     uint16_t scancode = inb(0x60);
-    printf("\n\033[1A%d", scancode);
+    printf("\n\033[1A0x%04x", scancode);
 }
 
 void kb_init() {

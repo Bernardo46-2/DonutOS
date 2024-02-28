@@ -40,9 +40,8 @@ void tty_putc(const uint16_t c) {
     }
 }
 
-// TODO: rewrite this thing
-int tty_putstr(char* str) {
-    char* s = str;
+int tty_puts(const char* const str) {
+    const char* s = str;
     
     while(*s != '\0') {
         if(*s != '\033') {

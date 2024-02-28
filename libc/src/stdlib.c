@@ -11,7 +11,7 @@ int itoa(int num, char* str, int len, int base) {
         digit = num % base;
 
         if(digit < 0xa) str[i++] = '0' + digit;
-        else str[i++] = 'A' + digit - 0xa;
+        else str[i++] = 'a' + digit - 0xa;
 
         num /= base;
     } while(num && (i < (len-1)));
