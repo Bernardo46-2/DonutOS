@@ -3,7 +3,6 @@
 
 #include "types.h"
 
-#define NULL ((void*)0)
 #define HEAP_ADDRESS 0x50000
 #define STACK_ADDRESS 0x90000
 

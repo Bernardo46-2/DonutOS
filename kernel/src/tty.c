@@ -1,14 +1,17 @@
 #include "../include/tty.h"
+#include "../include/kb.h"
 
-#include "../../libc/include/stdlib.h"
+#include "../../libc/include/atoi.h"
 #include "../../libc/include/string.h"
+
+#define TTY_ROW (tty_ptr / VGA_HEIGHT)
+#define TTY_COL (tty_ptr % VGA_WIDTH)
 
 static uint16_t* tty_buffer;
 static size_t tty_ptr;
 static uint16_t tty_color;
-
-#define TTY_ROW (tty_ptr / VGA_HEIGHT)
-#define TTY_COL (tty_ptr % VGA_WIDTH)
+static char* tty_input_buf[4096];
+static size_t tty_input_ptr;
 
 void tty_init() {
     tty_buffer = (uint16_t*)VGA_MEMORY;
@@ -88,5 +91,37 @@ int tty_puts(const char* const str) {
         s++;
     }
 
+    vga_move_cursor_to(tty_ptr);
+
     return s - str;
+}
+
+// do the buffer saving here
+// receive char
+// handle what to do
+// kb handles only control keys and send other keys here
+
+inline void tty_update_cursor() {
+    vga_move_cursor_to(tty_ptr);
+}
+
+void tty_read_key(char key) {
+    
+}
+
+// TODO: a proper read prompt
+// - when kb.last_key() == '\n', copy buffer to a str and
+//   handle special chars and whatnot. that will optimze
+//   the kb_handler
+char* tty_read() {
+    // kb_set_state(KB_READ);
+    
+    char last_key;
+    do {
+        last_key = kb_last_key();
+    } while(last_key != '\n');
+    
+    // kb_set_state(KB_OFF);
+    
+    return NULL;
 }

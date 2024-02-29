@@ -32,10 +32,10 @@ void init_os() {
 
 extern void main() {
     init_os();
-    // outb(0x3d4, 0x0f);
-    // outb(0x3d5, (uint8_t)(136));
-    // outb(0x3d4, 0x0e);
-    // outb(0x3d5, (uint8_t)(2));
+    while(1) {
+        printf(">");
+        tty_read();
+    }
     // donut();
     while(1);
 }
