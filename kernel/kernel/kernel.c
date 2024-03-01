@@ -28,14 +28,8 @@ void init_os() {
     kb_init();
 }
 
-// #include "../include/asm.h"
-
 extern void main() {
     init_os();
-    while(1) {
-        printf(">");
-        tty_read();
-    }
-    // donut();
+    tty_prompt();
     while(1);
 }

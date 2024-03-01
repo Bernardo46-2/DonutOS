@@ -3,11 +3,13 @@
 
 #include "types.h"
 
-void* memcpy(void* src, void* dest, size_t size);
+void* memcpy(void* dest, void* src, size_t size);
 void* memset(void* ptr, int c, size_t n);
 size_t strlen(const char* const str);
-void strrev(char* str);
-char* strcpy(char* dest, char* src);
-char* strcat(char* dest, char* src);
+void strrev(void* str);
+void* strcpy(void* dest, void* src);
+void* strcat(void* dest, void* src);
+void* memmove(void* dest, void* src, size_t n);
+int strcmp(void* s1, void* s2);
 
 #endif

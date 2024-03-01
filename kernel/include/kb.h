@@ -46,14 +46,7 @@
 #define KEY_SCROLL_LOCK 0x46
 #define KEY_NUM_LOCK    0x45
 
-enum kb_state {
-    KB_OFF,
-    KB_READ,
-    KB_HIT
-};
-
-void kb_set_state(enum kb_state st);
-char kb_last_key();
+void kb_set_key_handler(void (*key_handler)(unsigned char));
 void kb_init();
 
 #endif
