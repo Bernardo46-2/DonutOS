@@ -41,6 +41,6 @@ void idt_set_gate(uint8_t index, void (*base)(regs_t* rs), uint16_t sel, uint8_t
         .sel = sel,
         .zero = 0,
         .flags = flags,
-        .base_hi = ((size_t)base) >> 16 & 0xff
+        .base_hi = ((size_t)base) >> 16 & 0xffff
     };
 }

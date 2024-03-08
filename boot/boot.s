@@ -25,7 +25,7 @@ _start:
     mov ah, 2                ; code for accessing sector in read-only mode
     mov al, [N_SECTORS]      ; how many sectors to read
     mov ch, 0                ; cilinder number
-    mov cl, 2                ; sector number (set to 0 to force an error)
+    mov cl, 2                ; sector number (counts from 1 (why?))
     mov dh, 0                ; head number
     mov dl, [BOOT_DISK]      ; drive number
     mov bx, KERNEL_LOCATION  ; where to load the sector to

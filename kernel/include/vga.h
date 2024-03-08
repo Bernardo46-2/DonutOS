@@ -30,5 +30,7 @@ enum vga_color {
 uint16_t vga_color(const enum vga_color fg, const enum vga_color bg);
 uint16_t vga_entry(const uint16_t c, const uint16_t color);
 void vga_move_cursor_to(size_t index);
+void vga_enable_cursor(uint8_t start, uint8_t end);
+void vga_disable_cursor();
 
 #endif

@@ -1,12 +1,10 @@
 #include "../include/isr.h"
 #include "../include/idt.h"
-
-// TODO: remove this
-#include "../../libc/include/stdio.h"
+#include "../include/blue_scr.h"
 
 #define NUM_ISRS 48
 
-// these are all in DonutOS/kernel/src/isr_wrapper.s
+// these are all in isr_wrapper.s
 extern void _isr0(regs_t* rs);
 extern void _isr1(regs_t* rs);
 extern void _isr2(regs_t* rs);
@@ -105,17 +103,15 @@ inline void isr_install(size_t index, void (*handler)(regs_t* rs)) {
     handlers[index] = handler;
 }
 
-// called from DonutOS/kernel/src/isr_wrapper.s
+// called from isr_wrapper.s
 void isr_handler(regs_t* rs) {
-    // printf("yo - %d\n", rs->int_no);
     if(handlers[rs->int_no]) {
         handlers[rs->int_no](rs);
     }
 }
 
-// TODO: keep this as a middleware and call tha proper handler
 static void __exception_handler(regs_t* rs) {
-    printf("\nexception called!\nno: %d\nmsg: %s\n", rs->int_no, exception_msgs[rs->int_no]);
+    blue_scr(rs->int_no, exception_msgs[rs->int_no]);
     while(1);
 }
 

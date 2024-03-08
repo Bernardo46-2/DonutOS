@@ -8,11 +8,7 @@
 #include "../include/kb.h"
 
 // LibC
-#include "../../libc/include/stdlib.h"
-#include "../../libc/include/stdio.h"
-
-// Donut
-#include "../include/donut.h"
+#include "../../libc/include/malloc.h"
 
 void init_os() {
     // os stuff

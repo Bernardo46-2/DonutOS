@@ -52,7 +52,6 @@ int printf(const char* fmt, ...) {
             if(helper_str[0] != '\0') leading_len = atoi(helper_str);
             
             // handling the actual formatting type
-            c = *fmt;
             switch(c) {
             case '%':
                 *s = '%';
@@ -66,7 +65,8 @@ int printf(const char* fmt, ...) {
                 if(leading_len > value_len)
                     memset(s, leading_char, leading_len - value_len);
                 
-                s += leading_len - value_len;
+                if(leading_len > value_len)
+                    s += leading_len - value_len;
                 strcpy(s, helper_str);
                 s += value_len;
                 break;
@@ -77,7 +77,8 @@ int printf(const char* fmt, ...) {
                 if(leading_len > value_len)
                     memset(s, leading_char, leading_len - value_len);
                 
-                s += leading_len - value_len;
+                if(leading_len > value_len)
+                    s += leading_len - value_len;
                 strcpy(s, helper_str);
                 s += value_len;
                 break;
