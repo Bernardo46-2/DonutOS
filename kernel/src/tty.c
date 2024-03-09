@@ -319,7 +319,7 @@ void tty_read(char* dest) {
 void tty_prompt() {
     char str[TTY_INPUT_SIZE];
     mrand(1000);
-    srand(8777);
+    srand(0);
     
     while(1) {
         tty_putc('>');

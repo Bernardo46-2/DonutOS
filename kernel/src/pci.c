@@ -70,6 +70,7 @@ void scan_pci_bus() {
     if (devices) {
         free(devices);
         devices = NULL;
+        devices_size = 0;
     }
 
     uint16_t bus, device, i = 0;
