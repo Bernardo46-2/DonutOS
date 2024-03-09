@@ -10,7 +10,7 @@
 #include "../../libc/include/rand.h"
 
 #define TTY_INPUT_SIZE  512
-#define TTY_HISTORY_SIZE 4
+#define TTY_HISTORY_SIZE 16
 
 #define TTY_ROW (tty_ptr / VGA_HEIGHT)
 #define TTY_COL (tty_ptr % VGA_WIDTH)
