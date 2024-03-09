@@ -30,14 +30,14 @@ inline uint16_t get_if() {
     return flags & (1 << 9);
 }
 
-inline double asm_sin(double x) {
-    double result;
-    __asm__ __volatile__ ("fsin" : "=t"(result) : "0"(x));
-    return result;
+inline void outl(uint16_t port, uint32_t val) {
+    __asm__ volatile ("outl %0, %1" : : "a"(val), "Nd"(port));
 }
 
-inline double asm_cos(double x) {
-    double result;
-    __asm__ __volatile__ ("fcos" : "=t"(result) : "0"(x));
-    return result;
+inline uint32_t inl(uint16_t port) {
+    uint32_t ret;
+    __asm__ volatile("inl %1, %0"
+                     : "=a"(ret)
+                     : "Nd"(port));
+    return ret;
 }

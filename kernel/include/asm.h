@@ -12,5 +12,7 @@ size_t gdt_code_addr();
 uint16_t get_if();
 double asm_sin(double x);
 double asm_cos(double x);
+void outl(uint16_t port, uint32_t val);
+uint32_t inl(uint16_t port);
 
 #endif
