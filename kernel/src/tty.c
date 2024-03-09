@@ -6,6 +6,7 @@
 #include "../../libc/include/atoi.h"
 #include "../../libc/include/string.h"
 #include "../../libc/include/printf.h"
+#include "../../libc/include/rand.h"
 
 #define TTY_INPUT_SIZE  512
 #define TTY_HISTORY_SIZE 16
@@ -307,6 +308,8 @@ void tty_read(char* dest) {
 // TODO: move the command handler somewhere else
 void tty_prompt() {
     char str[TTY_INPUT_SIZE];
+    mrand(1000);
+    srand(8777);
     
     while(1) {
         tty_putc('>');
@@ -331,6 +334,8 @@ void tty_prompt() {
             tty_puts("DonutOS\n");
         } else if(strcmp(str, "die") == 0) {
             blue_scr(666, "the pumpkins are ready to march on mankind");
+        } else if(strcmp(str, "rand") == 0) {
+            printf("rand = %d\n", rand());
         } else {
             tty_puts("command `");
             tty_puts(str);
