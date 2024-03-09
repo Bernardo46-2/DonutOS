@@ -10,7 +10,7 @@
 #include "../../libc/include/rand.h"
 
 #define TTY_INPUT_SIZE  512
-#define TTY_HISTORY_SIZE 16
+#define TTY_HISTORY_SIZE 4
 
 #define TTY_ROW (tty_ptr / VGA_HEIGHT)
 #define TTY_COL (tty_ptr % VGA_WIDTH)
@@ -157,22 +157,31 @@ static void __history_new_buf() {
         history_fst = 0;
         history_lst = 0;
         return;
-    } else if(tty_history[history_lst][0] != '\0') {
-        char* tmp_ptr = tty_history[history_ptr];
-        char* snd_lst = tty_history[((size_t)(history_lst-1)) % TTY_HISTORY_SIZE];
+    }
+    
+    char* tmp_ptr = tty_history[history_ptr];
+    char* snd_lst = tty_history[((size_t)(history_lst-1)) % TTY_HISTORY_SIZE];
+    
+    if(tmp_ptr[0] == '\0') return;
         
-        if(history_fst == (history_lst+1) % TTY_HISTORY_SIZE) {
-            history_fst = (history_fst+1) % TTY_HISTORY_SIZE;
-        }
-
+    if(tty_history[history_lst][0] != '\0') {
         if(strcmp(tmp_ptr, snd_lst) != 0) {
             strcpy(tty_history[history_lst], tmp_ptr);
+            history_lst = (history_lst+1) % TTY_HISTORY_SIZE;
+        } else {
+            tty_history[history_lst][0] = '\0';
         }
     } else {
-        strcpy(tty_history[history_lst], tty_history[history_ptr]);
+        if(strcmp(tmp_ptr, snd_lst) != 0) {
+            strcpy(tty_history[history_lst], tty_history[history_ptr]);
+            history_lst = (history_lst+1) % TTY_HISTORY_SIZE;
+        }
+    }
+    
+    if(history_fst == history_lst) {
+        history_fst = (history_fst+1) % TTY_HISTORY_SIZE;
     }
 
-    history_lst = (history_lst+1) % TTY_HISTORY_SIZE;
     history_ptr = history_lst;
 }
 
