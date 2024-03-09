@@ -7,29 +7,50 @@
 #include "../../libc/include/string.h"
 #include "../../libc/include/printf.h"
 
-// TODO: create a command history to cycle with arrows up/down
-
-#define TTY_INPUT_SIZE 4096
+#define TTY_INPUT_SIZE  512
+#define TTY_HISTORY_SIZE 16
 
 #define TTY_ROW (tty_ptr / VGA_HEIGHT)
 #define TTY_COL (tty_ptr % VGA_WIDTH)
 
 // output
 static uint16_t* tty_buffer;
-static volatile size_t tty_ptr;
+static size_t tty_prompt_ptr;
+static size_t tty_ptr;
 static uint16_t tty_color;
 
 // input
-static char tty_input_buf[TTY_INPUT_SIZE] = { 0 };
-static volatile size_t tty_input_ptr;
-static volatile size_t tty_input_len;
-static volatile char tty_stop_read = 0;
+static volatile uint8_t tty_has_key_ready;
+static volatile uint8_t tty_last_key;
+static uint8_t tty_stop_read;
+
+static char tty_history[TTY_HISTORY_SIZE][TTY_INPUT_SIZE] = { 0 };
+
+static char* tty_input_buf;
+static size_t tty_input_ptr;
+static size_t tty_input_len;
+
+static size_t history_ptr;
+static int32_t history_fst;
+static int32_t history_lst;
+
+// ---------------------------------------------------------------------------------------------------------------------------------------- //
 
 void tty_init() {
+    // output
     tty_buffer = (uint16_t*)VGA_MEMORY;
     tty_ptr = 0;
     tty_color = vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+
+    //input
+    tty_stop_read = 1;
+    tty_has_key_ready = 0;
+    history_ptr = 0;
+    history_fst = -1;
+    history_lst = -1;
 }
+
+// --------------------------------------------------------------- Output ----------------------------------------------------------------- //
 
 void tty_set_color(const enum vga_color fg, const enum vga_color bg) {
     tty_color = vga_color(fg, bg);
@@ -39,7 +60,7 @@ inline void tty_update_cursor() {
     vga_move_cursor_to(tty_ptr);
 }
 
-static void __tty_putc_no_cursor(const uint16_t c) {
+static void __tty_write_char(const uint16_t c) {
     uint16_t entry;
 
     switch(c) {
@@ -60,7 +81,7 @@ static void __tty_putc_no_cursor(const uint16_t c) {
 }
 
 void tty_putc(const uint16_t c) {
-    __tty_putc_no_cursor(c);
+    __tty_write_char(c);
     tty_update_cursor();
 }
 
@@ -79,7 +100,7 @@ int tty_puts(const char* const str) {
 
     while(*s != '\0') {
         if(*s != '\033') {
-            __tty_putc_no_cursor(*s);
+            __tty_write_char(*s);
         } else {
             s++;
             size_t tmp_len = 16;
@@ -127,102 +148,169 @@ int tty_puts(const char* const str) {
     return s - str;
 }
 
-// TODO: handle special keys
-// - arrows
-// - backspace | delete
-static void __tty_read_key(unsigned char key) {
-    if(!(tty_stop_read = key == '\n')) {
-        switch(key) {
-            case KEY_UP:
-                // TODO
-                break;
-            case KEY_DOWN:
-                // TODO
-                break;
-            case KEY_LEFT:
-                if(0 < tty_input_ptr && tty_input_ptr <= TTY_INPUT_SIZE) {
-                    tty_ptr--;
-                    tty_input_ptr--;
-                    tty_update_cursor();
-                }
-                break;
-            case KEY_RIGHT:
-                if(0 <= tty_input_ptr && tty_input_ptr < tty_input_len) {
-                    tty_ptr++;
-                    tty_input_ptr++;
-                    tty_update_cursor();
-                }
-                break;
-            // TODO: debug these two
-            case KEY_HOME:
-                tty_ptr -= tty_input_ptr;
-                tty_input_ptr = 0;
-                tty_update_cursor();
-                break;
-            case KEY_END:
-                tty_ptr += tty_input_len - tty_input_ptr;
-                tty_input_ptr = tty_input_len - 1;
-                tty_update_cursor();
-                break;
-            case KEY_BACKSPACE:
-                if(tty_input_len > 0 && tty_input_ptr > 0) {
-                    // TODO: move remaining of string left
+// ------------------------------------------------------------ History ---------------------------------------------------------------------- //
 
-                    if(tty_input_ptr == tty_input_len) {
-                        tty_puts("\b \b");
-                        tty_input_len--;
-                        tty_input_ptr--;
-                    } else {
-                        for(size_t i = tty_ptr-1; i < tty_ptr+tty_input_len-1; i++) {
-                            tty_buffer[i] = tty_buffer[i+1];
-                        }
-                        tty_buffer[tty_ptr + tty_input_len] = vga_entry(' ', tty_color);
-                        tty_ptr--;
-
-                        memmove((void*)(tty_input_buf+tty_input_ptr-1), (void*)(tty_input_buf+tty_input_ptr), tty_input_len - tty_input_ptr);
-                        tty_input_ptr--;
-                        tty_input_len--;
-                        tty_update_cursor();
-                    }
-                }
-                break;
-            case KEY_DELETE:
-                // TODO: same as above
-                break;
-            default:
-                // TODO: move remaining of string right
-                tty_input_len++;
-                tty_input_buf[tty_input_ptr++] = key;
-                tty_putc(key);
-                break;
+static void __history_new_buf() {
+    if(history_fst == -1 && history_lst == -1) {
+        history_fst = 0;
+        history_lst = 0;
+    } else if(tty_history[history_lst][0] != '\0') {
+        if(history_fst == (history_lst+1) % TTY_HISTORY_SIZE) {
+            history_fst = (history_fst+1) % TTY_HISTORY_SIZE;
         }
+        
+        history_lst = (history_lst+1) % TTY_HISTORY_SIZE;
+    }
+    
+    history_ptr = history_lst;
+}
+
+static void __history_move(int32_t offset) {
+    size_t tmp = tty_input_len;
+    tty_input_buf[tty_input_len] = '\0';
+    
+    history_ptr = ((size_t)(history_ptr+offset)) % TTY_HISTORY_SIZE;
+    tty_input_buf = tty_history[history_ptr];
+    
+    tty_input_len = strlen(tty_input_buf);
+    tty_input_ptr = tty_input_len;
+    
+    tty_ptr = tty_prompt_ptr;
+    tty_puts(tty_input_buf);
+    
+    if(tmp > tty_input_len) {
+        for(size_t i = 0; i < tmp; i++) {
+            __tty_write_char(' ');
+        }
+    }
+
+    tty_ptr = tty_prompt_ptr + tty_input_len;
+}
+
+static void __history_next_buf() {
+    if(history_ptr != history_lst) {
+        __history_move(1);
+    }
+}
+
+static void __history_prev_buf() {
+    if(history_ptr != history_fst) {
+        __history_move(-1);
+    }
+}
+
+// ---------------------------------------------------------------- Input ----------------------------------------------------------------- //
+
+static void __tty_read_key(unsigned char key) {
+    tty_has_key_ready = 1;
+    tty_last_key = key;
+}
+
+// TODO: delete key
+static void __tty_handle_key() {
+    tty_has_key_ready = 0;
+    unsigned char key = tty_last_key;
+    
+    if(!(tty_stop_read = key == '\n')) {
+       switch(key) {
+           case KEY_UP:
+               __history_prev_buf();
+               break;
+           case KEY_DOWN:
+               __history_next_buf();
+               break;
+           case KEY_LEFT:
+               if(0 < tty_input_ptr && tty_input_ptr <= TTY_INPUT_SIZE) {
+                   tty_ptr--;
+                   tty_input_ptr--;
+                   tty_update_cursor();
+               }
+               break;
+           case KEY_RIGHT:
+               if(0 <= tty_input_ptr && tty_input_ptr < tty_input_len) {
+                   tty_ptr++;
+                   tty_input_ptr++;
+                   tty_update_cursor();
+               }
+               break;
+           case KEY_HOME:
+               tty_ptr -= tty_input_ptr;
+               tty_input_ptr = 0;
+               tty_update_cursor();
+               break;
+           case KEY_END:
+               tty_ptr += tty_input_len - tty_input_ptr;
+               tty_input_ptr = tty_input_len;
+               tty_update_cursor();
+               break;
+           case KEY_BACKSPACE:
+               if(tty_input_len > 0 && tty_input_ptr > 0) {
+                   if(tty_input_ptr == tty_input_len) {
+                       tty_puts("\b \b");
+                       tty_input_len--;
+                       tty_input_ptr--;
+                   } else {
+                       for(size_t i = tty_ptr-1; i < tty_ptr+tty_input_len-1; i++) {
+                           tty_buffer[i] = tty_buffer[i+1];
+                       }
+                       tty_buffer[tty_ptr + tty_input_len] = vga_entry(' ', tty_color);
+                       tty_ptr--;
+
+                       memmove((void*)(tty_input_buf+tty_input_ptr-1), (void*)(tty_input_buf+tty_input_ptr), tty_input_len - tty_input_ptr);
+                       tty_input_ptr--;
+                       tty_input_len--;
+                       tty_update_cursor();
+                   }
+               }
+               break;
+           case KEY_DELETE:
+               // TODO: same as above
+               break;
+           default:
+               if(tty_input_len > tty_input_ptr) {
+                   for(size_t i = tty_input_len; i > tty_input_ptr; i--) {
+                       tty_input_buf[i] = tty_input_buf[i-1];
+                       tty_buffer[tty_ptr+(i-tty_input_ptr)] = tty_buffer[tty_ptr+(i-tty_input_ptr-1)];
+                   }
+               }
+               tty_input_len++;
+               tty_input_buf[tty_input_ptr++] = key;
+               tty_putc(key);
+               break;
+       }
     }
 }
 
 void tty_read(char* dest) {
+    __history_new_buf();
+    tty_input_buf = tty_history[history_lst];
     tty_input_buf[0] = '\0';
     tty_input_ptr = 0;
     tty_input_len = 0;
     tty_stop_read = 0;
     kb_set_key_handler(__tty_read_key);
 
-    while(tty_input_len < TTY_INPUT_SIZE && !tty_stop_read);
+    while(tty_input_len < TTY_INPUT_SIZE && !tty_stop_read) {
+        if(tty_has_key_ready) {
+            __tty_handle_key();
+        }
+    }
 
     kb_set_key_handler(NULL);
     tty_putc('\n');
     tty_input_buf[tty_input_len] = '\0';
-    // printf("\ninput len: %d", (int)tty_input_len);
-    // printf("\ninput[len] = `%d`", tty_input_buf[tty_input_len]);
-    // printf("\ninput: `%s`\n\n", tty_input_buf);
     memcpy(dest, tty_input_buf, tty_input_len+1);
 }
 
+// ---------------------------------------------------------------------------------------------------------------------------------------- //
+
 // TODO: move the command handler somewhere else
 void tty_prompt() {
-    char str[128];
+    char str[TTY_INPUT_SIZE];
     
     while(1) {
         tty_putc('>');
+        tty_prompt_ptr = tty_ptr;
         
         tty_read(str);
 
@@ -233,11 +321,11 @@ void tty_prompt() {
             tty_clear_scr();
         } else if(strcmp(str, "help") == 0) {
             tty_puts("\nAvailable Commands:\n");
+            tty_puts("help  - you're here\n");
             tty_puts("about - print system info\n");
-            tty_puts("help - you're here\n");
             tty_puts("clear - clears the screen\n");
             tty_puts("donut - spin the donut\n");
-            tty_puts("die - throw an error\n");
+            tty_puts("die   - throw an error\n");
             tty_puts("\n");
         } else if(strcmp(str, "about") == 0) {
             tty_puts("DonutOS\n");

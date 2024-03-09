@@ -1,3 +1,6 @@
+#include "../include/donut.h"
+#include "../include/vga.h"
+
 #include "../../libc/include/stdlib.h"
 #include "../../libc/include/stdio.h"
 #include "../../libc/include/string.h"
@@ -17,6 +20,7 @@
 int8_t b[1760], z[1760];
 
 void donut() {
+    vga_disable_cursor();
     int sA=1024,cA=0,sB=1024,cB=0,_;
     for (;;) {
         memset(b, 32, 1760);  // text buffer

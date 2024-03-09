@@ -2,8 +2,6 @@
 #define _TYPES_H_
 
 #define NULL ((void*)0)
-#define TRUE 1
-#define FALSE 0
 
 typedef char int8_t;
 typedef short int16_t;

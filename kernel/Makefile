@@ -20,7 +20,6 @@ KERNEL_OBJS = \
     $(patsubst $(SRC_DIR)/%.s, $(BUILD_DIR)/%.o, $(filter %.s,$(SRC_FILES))) \
     $(patsubst $(KERNEL_DIR)/%, $(BUILD_DIR)/%.o, $(basename $(KERNEL_FILES)))
 
-
 FIRST_LINKER_OBJS = $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o
 OTHER_LINKER_OBJS = $(filter-out $(FIRST_LINKER_OBJS), $(KERNEL_OBJS))
 

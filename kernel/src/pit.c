@@ -1,8 +1,7 @@
 #include "../include/pit.h"
-#include "../include/idt.h"
 #include "../include/asm.h"
 
-#define PIT_HZ      1193182
+#define PIT_HZ        1193182
 
 #define PIT_CHANNEL_0 0x40
 #define PIT_CHANNEL_1 0x41
