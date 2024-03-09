@@ -1,6 +1,14 @@
 #include "../include/rand.h"
 #include "../include/math.h"
 
+/*
+ * Codigo criado a partir do modelo de numeros pseudo aleatorios Itamaraca
+ * e modificado para o contexto do SO
+ * 
+ * autor: Daniel Henrique Pereira
+ * artigo: Itamaracá: A Novel Simple Way to Generate Pseudo-random Numbers
+ * link: https://www.cambridge.org/engage/coe/article-details/61b410fadcbea24f839f0235
+ */
 
 static int s0;
 static int s1;
