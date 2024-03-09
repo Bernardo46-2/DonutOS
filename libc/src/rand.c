@@ -20,7 +20,7 @@ static int __frns(int x, int y) {
     return abs(RAND_MAX - (int)(abs(x - y) * 1.97));
 }
 
-void mrand(int max) {
+inline void mrand(int max) {
     RAND_MAX = max;
 }
 
