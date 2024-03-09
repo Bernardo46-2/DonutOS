@@ -2,6 +2,7 @@
 #include "../include/kb.h"
 #include "../include/blue_scr.h"
 #include "../include/donut.h"
+#include "../include/pci.h"
 
 #include "../../libc/include/atoi.h"
 #include "../../libc/include/string.h"
@@ -345,6 +346,8 @@ void tty_prompt() {
             blue_scr(666, "the pumpkins are ready to march on mankind");
         } else if(strcmp(str, "rand") == 0) {
             printf("rand = %d\n", rand());
+        } else if(strcmp(str, "pci") == 0) {
+            scan_pci_bus();
         } else {
             tty_puts("command `");
             tty_puts(str);
