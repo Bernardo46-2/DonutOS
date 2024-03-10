@@ -47,33 +47,34 @@ static uint32_t pci_config_read(uint8_t bus, uint8_t slot, uint8_t func, uint8_t
     return pci_config_read_data();
 }
 
-void pci_read_bars(pci_device_t pci_device) {
-    printf("Lendo BARs do dispositivo VirtIO:\n");
+void pci_read_bars(pci_device_t pci_device, pci_bars *pci_bars) {
     for (int bar_num = 0; bar_num < 6; bar_num++) {
-        uint32_t bar_value = pci_config_read(pci_device.bus, pci_device.device, pci_device.func, 0x10 + (bar_num * 4));
-        printf("BAR%d: 0x%X\n", bar_num, bar_value);
+        pci_bars->bar[bar_num] = pci_config_read(pci_device.bus, pci_device.slot, pci_device.func, 0x10 + (bar_num * 4));
     }
 }
 
-static inline int pci_touch_device(uint8_t bus, uint8_t device, uint8_t func) {
-    return (pci_config_read(bus, device, func, PCI_VENDOR_ID) & 0xffff) != 0xFFFF;
+static inline int pci_touch_device(uint8_t bus, uint8_t slot, uint8_t func) {
+    return (pci_config_read(bus, slot, func, PCI_VENDOR_ID) & 0xffff) != 0xFFFF;
 }
 
-// Verify and register a PCI device
-static void pci_check_device(uint8_t bus, uint8_t device, uint8_t func, pci_device_t *pci_device, uint16_t *counter) {
+// Verify and register a PCI slot
+static void pci_check_and_get_device(uint8_t bus, uint8_t slot, uint8_t func, pci_device_t *pci_device, uint16_t *counter) {
     uint16_t vendor_id;
     uint16_t device_id;
 
-    if ((vendor_id = pci_config_read(bus, device, func, PCI_VENDOR_ID) & 0xffff) == 0xFFFF) return;
+    if ((vendor_id = pci_config_read(bus, slot, func, PCI_VENDOR_ID) & 0xffff) == 0xFFFF) return;
 
     (*counter)++;
 
-    device_id = pci_config_read(bus, device, func, PCI_DEVICE_ID) >> 16;
+    device_id = pci_config_read(bus, slot, func, PCI_DEVICE_ID) >> 16;
     pci_device->vendor_id = vendor_id;
     pci_device->device_id = device_id;
     pci_device->bus       = bus;
-    pci_device->device    = device;
+    pci_device->slot      = slot;
     pci_device->func      = func;
+
+    pci_read_bars(*pci_device, &(pci_device->bars));
+    pci_device->irq = pci_config_read(bus, slot, func, 0x3C) & 0xFF;
 }
 
 // Scan the PCI bus and identify devices
@@ -84,13 +85,13 @@ void pci_scan_bus() {
         devices_size = 0;
     }
 
-    uint16_t bus, device, func, i = 0;
+    uint16_t bus, slot, func, i = 0;
     pci_device_t tmp;
 
     for (bus = 0; bus < 256; bus++) {
-        for (device = 0; device < 32; device++) {
+        for (slot = 0; slot < 32; slot++) {
             for (func = 0; func < 8; func++) {
-                devices_size += pci_touch_device(bus, device, func);
+                devices_size += pci_touch_device(bus, slot, func);
             }
         }
     }
@@ -98,9 +99,9 @@ void pci_scan_bus() {
     devices = malloc(sizeof(pci_device_t) * devices_size);
 
     for (bus = 0; bus < 256; bus++) {
-        for (device = 0; device < 32; device++) {
+        for (slot = 0; slot < 32; slot++) {
             for (func = 0; func < 8; func++) {
-                pci_check_device(bus, device, func, &devices[i], &i);
+                pci_check_and_get_device(bus, slot, func, &devices[i], &i);
             }
         }
     }
@@ -114,4 +115,16 @@ int pci_get_device(uint16_t vendor_id, uint16_t device_id, pci_device_t *target)
         }
     }
     return 0;
+}
+
+void pci_device_debug(pci_device_t device) {
+    printf("Vendor_id = 0x%04x\n", device.vendor_id);
+    printf("Device_id = 0x%04x\n", device.device_id);
+    printf("Bus  = 0x%02x\n", device.bus);
+    printf("Slot = 0x%02x\n", device.slot);
+    printf("Func = 0x%02x\n", device.func);
+    for (int i = 0; i < 6; i++) {
+        printf("Bar%d = 0x%08x\n", i, device.bars.bar[i]);
+    }
+    printf("Irq  = 0x%02x\n", device.irq);
 }
