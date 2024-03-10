@@ -1,5 +1,4 @@
 #include "../include/malloc.h"
-#include "../../kernel/include/tty.h"
 
 const uint32_t HEAP_MAX_SIZE = STACK_ADDRESS - HEAP_ADDRESS;
 uint8_t* const HEAP_PTR = (uint8_t*)HEAP_ADDRESS;
