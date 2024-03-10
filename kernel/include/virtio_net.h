@@ -11,6 +11,7 @@
 
 #define CCW_CMD_VDEV_RESET 0x33
 
+// KRAIO
 // Feature bits
 // 0111_1001_1011_1111_1000_0000_0110_0100
 #define VIRTIO_CSUM           0  // Device handles packets with partial checksum. This “checksum offload” is a common feature on modern network cards.
