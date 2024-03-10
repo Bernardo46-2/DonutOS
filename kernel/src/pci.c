@@ -1,5 +1,7 @@
 #include "../include/pci.h"
 #include "../include/asm.h"
+#include "../include/tty.h"
+#include "../../libc/include/itoa.h"
 #include "../../libc/include/malloc.h"
 #include "../../libc/include/printf.h"
 
@@ -22,10 +24,6 @@ static inline void pci_config_write_addr(uint32_t addr) {
     outl(CONFIG_ADDRESS, addr);
 }
 
-static inline void pci_config_write_data(uint32_t data) {
-    outl(CONFIG_DATA, data);
-}
-
 static inline uint32_t pci_config_read_data() {
     return inl(CONFIG_DATA);
 }
@@ -35,50 +33,65 @@ static uint32_t pci_config_read(uint8_t bus, uint8_t slot, uint8_t func, uint8_t
     uint32_t lbus  = (uint32_t)bus;
     uint32_t lslot = (uint32_t)slot;
     uint32_t lfunc = (uint32_t)func;
-    uint32_t tmp = 0;
+    uint32_t tmp   = 0;
 
-    // Configuration address
-    address = (uint32_t)((lbus << 16) | (lslot << 11) |
-              (lfunc << 8) | (offset & 0xfc) | ((uint32_t)0x80000000));
+    // 31     - Enable bit
+    // 30-24  - Reserved
+    // 23-16  - Bus  Number
+    // 15-11  - Slot Number
+    // 10-8   - Func Number
+    // 7-0    - Register Offset
+    address = (uint32_t)((lbus << 16) | (lslot << 11) | (lfunc << 8) | (offset & 0xfc) | ((uint32_t)0x80000000));
 
-    // Write the address
     pci_config_write_addr(address);
-
     return pci_config_read_data();
 }
 
-static inline int pci_touch_device(uint8_t bus, uint8_t device) {
-    return ((pci_config_read(bus, device, 0, PCI_VENDOR_ID) & 0xffff) == 0xFFFF) ? 0 : 1;
+void pci_read_bars(pci_device_t pci_device) {
+    printf("Lendo BARs do dispositivo VirtIO:\n");
+    for (int bar_num = 0; bar_num < 6; bar_num++) {
+        uint32_t bar_value = pci_config_read(pci_device.bus, pci_device.device, pci_device.func, 0x10 + (bar_num * 4));
+        printf("BAR%d: 0x%X\n", bar_num, bar_value);
+    }
+}
+
+static inline int pci_touch_device(uint8_t bus, uint8_t device, uint8_t func) {
+    return (pci_config_read(bus, device, func, PCI_VENDOR_ID) & 0xffff) != 0xFFFF;
 }
 
 // Verify and register a PCI device
-static void pci_check_device(uint8_t bus, uint8_t device, pci_device_t *pci_device, uint16_t *counter) {
+static void pci_check_device(uint8_t bus, uint8_t device, uint8_t func, pci_device_t *pci_device, uint16_t *counter) {
     uint16_t vendor_id;
     uint16_t device_id;
 
-    if ((vendor_id = pci_config_read(bus, device, 0, PCI_VENDOR_ID) & 0xffff) == 0xFFFF) return;
+    if ((vendor_id = pci_config_read(bus, device, func, PCI_VENDOR_ID) & 0xffff) == 0xFFFF) return;
 
     (*counter)++;
 
-    device_id = pci_config_read(bus, device, 0, PCI_DEVICE_ID) >> 16;
+    device_id = pci_config_read(bus, device, func, PCI_DEVICE_ID) >> 16;
     pci_device->vendor_id = vendor_id;
     pci_device->device_id = device_id;
+    pci_device->bus       = bus;
+    pci_device->device    = device;
+    pci_device->func      = func;
 }
 
 // Scan the PCI bus and identify devices
-void scan_pci_bus() {
+void pci_scan_bus() {
     if (devices) {
         free(devices);
         devices = NULL;
         devices_size = 0;
     }
 
-    uint16_t bus, device, i = 0;
+    uint16_t bus, device, func, i = 0;
     pci_device_t tmp;
 
     for (bus = 0; bus < 256; bus++) {
         for (device = 0; device < 32; device++) {
-            devices_size += pci_touch_device(bus, device);
+            for (func = 0; func < 8; func++) {
+                devices_size += pci_touch_device(bus, device, func);
+            }
         }
     }
 
@@ -86,11 +99,19 @@ void scan_pci_bus() {
 
     for (bus = 0; bus < 256; bus++) {
         for (device = 0; device < 32; device++) {
-            pci_check_device(bus, device, &devices[i], &i);
+            for (func = 0; func < 8; func++) {
+                pci_check_device(bus, device, func, &devices[i], &i);
+            }
         }
     }
+}
 
-    for (int j = 0; j < devices_size; j++) {
-        printf("Vendor = 0x%x, Device = 0x%x\n", devices[j].vendor_id, devices[j].device_id);
+int pci_get_device(uint16_t vendor_id, uint16_t device_id, pci_device_t *target) {
+    for (int i = 0; i < devices_size; i++) {
+        if (devices[i].vendor_id == vendor_id && devices[i].device_id == device_id) {
+            (*target) = devices[i];
+            return 1;
+        }
     }
+    return 0;
 }

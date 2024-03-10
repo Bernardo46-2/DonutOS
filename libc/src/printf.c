@@ -8,6 +8,15 @@
 
 #include <stdarg.h>
 
+void str_to_upper(char *str) {
+    while (*str) {
+        if (*str >= 'a' && *str <= 'z') {
+            *str = *str - 'a' + 'A';
+        }
+        str++;
+    }
+}
+
 int printf(const char* fmt, ...) {
     if(fmt == NULL) return EOF;
     
@@ -73,6 +82,18 @@ int printf(const char* fmt, ...) {
             case 'x':
                 itoa(va_arg(ap, int), helper_str, helper_len, 16);
                 
+                value_len = strlen(helper_str);
+                if(leading_len > value_len)
+                    memset(s, leading_char, leading_len - value_len);
+                
+                if(leading_len > value_len)
+                    s += leading_len - value_len;
+                strcpy(s, helper_str);
+                s += value_len;
+                break;
+            case 'X':
+                itoa(va_arg(ap, int), helper_str, helper_len, 16);
+                str_to_upper(helper_str);
                 value_len = strlen(helper_str);
                 if(leading_len > value_len)
                     memset(s, leading_char, leading_len - value_len);

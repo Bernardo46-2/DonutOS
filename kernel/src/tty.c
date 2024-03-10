@@ -3,6 +3,7 @@
 #include "../include/blue_scr.h"
 #include "../include/donut.h"
 #include "../include/pci.h"
+#include "../include/virtio_net.h"
 
 #include "../../libc/include/atoi.h"
 #include "../../libc/include/string.h"
@@ -356,7 +357,8 @@ void tty_prompt() {
         } else if(strcmp(str, "rand") == 0) {
             printf("rand = %d\n", rand());
         } else if(strcmp(str, "pci") == 0) {
-            scan_pci_bus();
+            pci_scan_bus();
+            virtio_init();
         } else {
             tty_puts("command `");
             tty_puts(str);
