@@ -4,7 +4,7 @@
 #include "types.h"
 
 #define HEAP_ADDRESS 0x50000
-#define STACK_ADDRESS 0x90000
+#define STACK_ADDRESS 0x7ffff
 
 extern const uint32_t HEAP_MAX_SIZE;
 

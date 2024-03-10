@@ -4,6 +4,7 @@
 #include "../include/donut.h"
 #include "../include/pci.h"
 #include "../include/virtio_net.h"
+#include "../include/seg.h"
 
 #include "../../libc/include/atoi.h"
 #include "../../libc/include/string.h"
@@ -359,6 +360,8 @@ void tty_prompt() {
         } else if(strcmp(str, "pci") == 0) {
             pci_scan_bus();
             virtio_init();
+        } else if(strcmp(str, "seg") == 0) {
+            seg_test();
         } else {
             tty_puts("command `");
             tty_puts(str);

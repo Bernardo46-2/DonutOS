@@ -31,13 +31,11 @@ inline uint16_t get_if() {
 }
 
 inline void outl(uint16_t port, uint32_t val) {
-    __asm__ volatile ("outl %0, %1" : : "a"(val), "Nd"(port));
+    __asm__ __volatile__ ("outl %0, %1" : : "a"(val), "Nd"(port));
 }
 
 inline uint32_t inl(uint16_t port) {
     uint32_t ret;
-    __asm__ volatile("inl %1, %0"
-                     : "=a"(ret)
-                     : "Nd"(port));
+    __asm__ __volatile__ ("inl %1, %0" : "=a"(ret) : "Nd"(port));
     return ret;
 }
