@@ -359,7 +359,7 @@ void tty_prompt() {
             printf("rand = %d\n", rand());
         } else if(strcmp(str, "pci") == 0) {
             pci_scan_bus();
-            virtio_init();
+            virtio_net_init();
         } else if(strcmp(str, "seg") == 0) {
             seg_test();
         } else {
