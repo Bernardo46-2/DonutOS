@@ -11,6 +11,7 @@ void tty_clear_scr();
 int tty_puts(const char* const str);
 void tty_update_cursor();
 void tty_read(char* dest);
+void tty_scroll(int n);
 void tty_prompt();
 
 #endif

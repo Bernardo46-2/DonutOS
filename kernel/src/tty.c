@@ -14,7 +14,7 @@
 #define TTY_INPUT_SIZE  512
 #define TTY_HISTORY_SIZE 16
 
-#define TTY_ROW (tty_ptr / VGA_HEIGHT)
+#define TTY_ROW (tty_ptr / VGA_WIDTH)
 #define TTY_COL (tty_ptr % VGA_WIDTH)
 
 // output
@@ -56,11 +56,52 @@ void tty_init() {
 
 // --------------------------------------------------------------- Output ----------------------------------------------------------------- //
 
-void tty_set_color(const enum vga_color fg, const enum vga_color bg) {
+void tty_scroll(int n) {
+
+    if (n == 0) {
+        return;
+    }
+
+    size_t gap = n * VGA_WIDTH;
+    uint16_t entry = vga_entry(' ', tty_color);
+
+    if (gap > VGA_SCR_SIZE) {
+        gap = VGA_SCR_SIZE;
+    } else if (gap < 0) {
+        gap = 0;
+    }
+
+    if ( n > 0) {
+        for (size_t i = 0; i < VGA_SCR_SIZE - gap; i++) {
+            tty_buffer[i] = tty_buffer[i + gap];
+        }
+        for (size_t i = VGA_SCR_SIZE - gap; i < VGA_SCR_SIZE; i++) {
+            tty_buffer[i] = entry;
+        }
+    } else {
+        for (size_t i = VGA_SCR_SIZE - 1; i >= -gap; i--) {
+            tty_buffer[i] = tty_buffer[i + gap];
+        }
+        for (size_t i = 0; i < -gap; i++) {
+            tty_buffer[i] = entry;
+        }
+    }
+
+    tty_ptr -= gap;
+}
+
+
+inline void tty_set_color(const enum vga_color fg, const enum vga_color bg) {
     tty_color = vga_color(fg, bg);
 }
 
-inline void tty_update_cursor() {
+void tty_update_cursor() {
+    if (tty_ptr >= VGA_SCR_SIZE) {
+       tty_scroll(TTY_ROW - VGA_HEIGHT + 1);
+    } else if (tty_ptr < 0) {
+        tty_scroll(TTY_ROW);
+    }
+
     vga_move_cursor_to(tty_ptr);
 }
 
