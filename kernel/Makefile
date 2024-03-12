@@ -1,8 +1,8 @@
-CC = /usr/local/i386elfgcc/bin/i386-elf-gcc
-CFLAGS = -ffreestanding -Iinclude -m32 -g
+CC = gcc
+CFLAGS = -ffreestanding -Iinclude -m32 -g -march=i386 -O2 -fno-pie -fno-stack-protector
 
-LD = /usr/local/i386elfgcc/bin/i386-elf-ld
-LDFLAGS = -Ttext 0x8000 --oformat binary
+LD = ld
+LDFLAGS = -Ttext 0x8000 --oformat binary -m elf_i386 
 
 AS = nasm
 ASFLAGS = -f elf

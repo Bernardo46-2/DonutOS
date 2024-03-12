@@ -1,5 +1,5 @@
-CC = /usr/local/i386elfgcc/bin/i386-elf-gcc
-CFLAGS = -ffreestanding -Iinclude -m32 -g
+CC = gcc
+CFLAGS = -ffreestanding -Iinclude -m32 -g -march=i386 -O2 -fno-pie -fno-stack-protector
 
 SRC_DIR = src
 BUILD_DIR = ../build/libc
