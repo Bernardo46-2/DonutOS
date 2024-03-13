@@ -30,8 +30,8 @@ you'll need:
 ## How to run
 ### Linux:
 Just open the project's root folder and 
+- `make all` to compile it
 - `make run` to compile and run it
-- `make all` to just compile it
 - `make clean` to delete the binaries
 
 ### Windows:
