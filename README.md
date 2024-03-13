@@ -6,7 +6,7 @@ So this is something I started working on because I wanted to know how the hell 
 
 The main goal was to just write an OS that was able to run the [donut.c code](https://www.a1k0n.net/2021/01/13/optimizing-donut.html) (hence the name), but after having to implement so much stuff just to make that possible, it started becoming an actual thing, which made me want to keep developing on it. 
 
-Right now, there is a college project that was just too perfect not to use this OS as a starting point, so it just keeps on growing.. all hail the DonutOS!
+Right now, there is a college project that is just too perfect not to use this OS as a starting point, so it just keeps on growing.. all hail the DonutOS!
 
 ### Current state
 - Runs in 32 bit protected mode
