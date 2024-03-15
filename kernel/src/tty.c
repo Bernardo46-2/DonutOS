@@ -320,20 +320,16 @@ static void __tty_handle_key() {
                }
                break;
            case KEY_DELETE:
-                if(tty_input_len > 0 && tty_input_ptr < tty_input_len) {
-                     if(tty_input_ptr == tty_input_len-1) {
-                          tty_putc(' ');
-                          tty_input_len--;
-                     } else {
-                          for(size_t i = tty_ptr; i < tty_ptr+tty_input_len-1; i++) {
-                            tty_buffer[i] = tty_buffer[i+1];
-                          }
-                          tty_buffer[tty_ptr + tty_input_len-1] = vga_entry(' ', tty_color);
-                          tty_update_cursor();
-    
-                          memmove((void*)(tty_input_buf+tty_input_ptr), (void*)(tty_input_buf+tty_input_ptr+1), tty_input_len - tty_input_ptr);
-                          tty_input_len--;
-                     }
+                if (tty_input_len > 0 && tty_input_ptr < tty_input_len) {
+                    for (size_t i = tty_ptr; i < tty_ptr + tty_input_len - 1; i++) {
+                        tty_buffer[i] = tty_buffer[i + 1];
+                    }
+                    tty_buffer[tty_ptr + tty_input_len - 1] = vga_entry(0, tty_color);
+                    tty_update_cursor();
+
+                    memmove((void*)(tty_input_buf + tty_input_ptr), (void*)(tty_input_buf + tty_input_ptr + 1), tty_input_len - tty_input_ptr);
+                    tty_input_len--;
+                    
                 }
                break;
            default:
