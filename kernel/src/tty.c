@@ -10,6 +10,7 @@
 #include "../../libc/include/string.h"
 #include "../../libc/include/printf.h"
 #include "../../libc/include/rand.h"
+#include "tty.h"
 
 #define TTY_INPUT_SIZE  512
 #define TTY_HISTORY_SIZE 16
@@ -368,6 +369,30 @@ void tty_read(char* dest) {
     memcpy(dest, tty_input_buf, tty_input_len+1);
 }
 
+// -------------------------------------------------------------- Command Handler ----------------------------------------------------------- //
+
+static void __pci_command() {
+    pci_scan_bus();
+    virtio_net_init();
+
+    printf("MAC address = ");
+    for (int i = 0; i < 6; i++) {
+        if (i > 0) printf(":");
+        printf("%02X", (virtio_net_mac() >> ((5 - i) * 8)) & 0xFF);
+    }
+    printf("\n");
+}
+
+static void __color_command(char str[TTY_INPUT_SIZE])  {
+    tty_puts("Enter color: ");
+    tty_read(str);
+    int color = atoi(str);
+    tty_puts("Background color: ");
+    tty_read(str);
+    int bg = atoi(str);
+    tty_puts("\n");
+    tty_set_color(color, bg);
+};
 
 // ---------------------------------------------------------------------------------------------------------------------------------------- //
 
@@ -399,6 +424,10 @@ void tty_prompt() {
             tty_puts("donut - spin the donut\n");
             tty_puts("die   - throw an error\n");
             tty_puts("color - set screen color\n");
+            tty_puts("rand  - print random number\n");
+            tty_puts("pci   - scan pci bus\n");
+            tty_puts("seg   - test segment fault\n");
+            tty_puts("send - send a packet\n");
             tty_puts("\n");
         } else if(strcmp(str, "about") == 0) {
             tty_puts("DonutOS\n");
@@ -407,21 +436,28 @@ void tty_prompt() {
         } else if(strcmp(str, "rand") == 0) {
             printf("rand = %d\n", rand());
         } else if(strcmp(str, "pci") == 0) {
-            pci_scan_bus();
-            virtio_net_init();
+            __pci_command();
         } else if(strcmp(str, "seg") == 0) {
             seg_test();
         } else if(strcmp(str, "color") == 0) {
-            tty_puts("Enter color: ");
-            tty_read(str);
-            int color = atoi(str);
-            tty_puts("Background color: ");
-            tty_read(str);
-            int bg = atoi(str);
-            tty_puts("\n");
-            tty_set_color(color, bg);
-        } 
-        else {
+           __color_command(str);
+        } else if (strcmp(str, "send") == 0) {
+            uint8_t buffer[100];
+            for (int i = 0; i < 100; i++) {
+                buffer[i] = i;
+            }
+            tty_puts("sending packet\n");
+            switch (virtio_send_frame(buffer, 100)) {
+                case 0:
+                    tty_puts("packet sent\n");
+                    break;
+                case 1:
+                    tty_puts("queue full\n");
+                    break;
+                default:
+                    tty_puts("packet not sent\n");
+            }
+        } else {
             tty_puts("command `");
             tty_puts(str);
             tty_puts("` not found\n");

@@ -1,5 +1,11 @@
 QEMU = qemu-system-x86_64
-QEMUFLAGS = -drive format=raw,file=$(OS_FILE),index=0,if=ide, -m 128M -nic user,model=virtio-net-pci,mac=de:ad:be:ef:66:69
+QEMUFLAGS = -drive format=raw,file=$(OS_FILE),index=0,if=ide, \
+-m 128M \
+-netdev user,id=mynet0 \
+-device virtio-net-pci,netdev=mynet0,mac=de:ad:be:ef:66:69 \
+-object filter-dump,id=f1,netdev=mynet0,file=$(BUILD_DIR)/net_dump.dat \
+#-netdev tap,id=mynet0,ifname=tap0,script=no,downscript=no \
+#-device virtio-net-pci,netdev=mynet0,mac=de:ad:be:ef:66:69
 
 SUB_DIRS = libc boot kernel
 

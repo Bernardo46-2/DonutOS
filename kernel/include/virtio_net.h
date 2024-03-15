@@ -1,5 +1,4 @@
-#ifndef _VIRTIO_H_
-#define _VIRTIO_H_
+#pragma once
 
 #include "../../libc/include/types.h"
 #include "../include/pci.h"
@@ -54,11 +53,12 @@
 #define VIRTIO_DEVICE_NEEDS_RESET 64
 #define VIRTIO_FAILED             128
 
+
 typedef long long int64_t;
 typedef unsigned long long uint64_t;
 
 typedef struct {
-    uint64_t address;
+    uint32_t address;
     uint32_t length;
     uint16_t flags;
     uint16_t next;
@@ -87,7 +87,7 @@ typedef struct
     union
     {
         queue_buffer* buffers;
-        uint64_t base_address;
+        uint32_t base_address;
     };
     virtio_available* available;
     virtio_used* used;
@@ -105,15 +105,14 @@ typedef struct {
     pci_bars   bars;
     uint8_t    irq;
     virt_queue queue[16];
-    uint64_t   queue_n;
+    uint32_t   queue_n;
 } virtio_device;
 
 typedef struct {
-    uint16_t   vendor_id;
-    uint16_t   device_id;
+    uint16_t   vendor_id, device_id;
     uint32_t   io_address;
     uint8_t    irq;
-    virt_queue queue[3];
+    virt_queue rx, tx, ctrl_queue;
     uint64_t   queue_n;
     uint64_t   mac_address;
 } virtio_net_device;
@@ -129,5 +128,10 @@ typedef struct
 } net_header;
 
 int virtio_net_init();
-
-#endif
+uint64_t virtio_net_mac();
+void virtio_init_queues(virtio_device *virtio_pci, uint32_t bar0_address);
+void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_size);
+void negotiate(uint32_t *features);
+int virtio_init(virtio_device *virtio);
+int virtio_net_init();
+int virtio_send_frame(uint8_t* buffer, uint32_t length);

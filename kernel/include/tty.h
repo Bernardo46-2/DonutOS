@@ -12,6 +12,7 @@ int tty_puts(const char* const str);
 void tty_update_cursor();
 void tty_read(char* dest);
 void tty_scroll(int n);
+uint16_t tty_get_color();
 void tty_prompt();
 
 #endif

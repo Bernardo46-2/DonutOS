@@ -7,11 +7,32 @@
 #include "../../libc/include/malloc.h"
 #include "../../libc/include/time.h"
 
-void virtio_init_queues(virtio_device *virtio_pci, uint32_t bar0_address);
-void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_size);
-void negotiate(uint32_t *features);
-int virtio_init(virtio_device *virtio);
-int virtio_net_init();
+static virtio_net_device virtio_net;
+
+int virtio_send_frame(uint8_t* buffer, uint32_t length) {
+    virt_queue* tx = &virtio_net.tx;
+    uint16_t i = tx->next_buffer;
+
+    if (tx->available->rings[i] == 0) {
+        tx->available->rings[i] = i;
+        queue_buffer* qbuf = &tx->buffers[i];
+        qbuf->address = i;
+        tx->next_buffer = (tx->next_buffer + 1) % tx->queue_size;
+        qbuf->length = length;
+        qbuf->flags = 0;
+        qbuf->next = 0;
+        memcpy(qbuf, buffer, length);
+        tx->available->flags = 1;
+
+        // Notify the device
+        outw(virtio_net.io_address + 0x10, i);
+        return 0;
+    }
+
+    return -1;
+
+}
+
 
 int virtio_net_init() {
     uint8_t *buf;
@@ -19,23 +40,20 @@ int virtio_net_init() {
     int err = virtio_init(&virtio_device);
     if (err) goto err1;
 
-    virtio_net_device virtio_net = {
-        .vendor_id = virtio_device.vendor_id,
-        .device_id = virtio_device.device_id,
-        .io_address = virtio_device.bars.bar[0] & ~0x3,
-        .irq = virtio_device.irq,
-        .queue_n = virtio_device.queue_n,
-        .mac_address = 0,
-    };
-    virtio_net.queue[0] = virtio_device.queue[0];
-    virtio_net.queue[1] = virtio_device.queue[1];
-    virtio_net.queue[2] = virtio_device.queue[2];
 
-    virt_queue* rx = &virtio_net.queue[0];
-    virt_queue* tx = &virtio_net.queue[1];
+    virtio_net.vendor_id = virtio_device.vendor_id;
+    virtio_net.device_id = virtio_device.device_id;
+    virtio_net.io_address = virtio_device.bars.bar[0] & ~0x3;
+    virtio_net.irq = virtio_device.irq;
+    virtio_net.queue_n = virtio_device.queue_n;
+    virtio_net.mac_address = 0;
+    virtio_net.rx = virtio_device.queue[0];
+    virtio_net.tx = virtio_device.queue[1];
+    virtio_net.ctrl_queue = virtio_device.queue[2];
 
+    
     // check if both queues were found.
-    if (rx->base_address == 0 || tx->base_address == 0) goto err2;
+    if (virtio_net.rx.base_address == 0 || virtio_net.tx.base_address == 0) goto err2;
 
     // Get MAC address
     uint64_t tempq = 0;
@@ -44,13 +62,6 @@ int virtio_net_init() {
     }
     virtio_net.mac_address = tempq;
 
-    printf("MAC address = ");
-    for (int i = 0; i < 6; i++) {
-        if (i > 0) printf(":");
-        printf("%02X", (virtio_net.mac_address >> ((5 - i) * 8)) & 0xFF);
-    }
-    printf("\n");
-
 err1: return err;
 err2: return printf("device queue not found\n"), ERR_DEVICE_BAD_CONFIGURATION;
 }
@@ -58,7 +69,13 @@ err2: return printf("device queue not found\n"), ERR_DEVICE_BAD_CONFIGURATION;
 int virtio_init(virtio_device *virtio) {
     // 1 Get the pci addresses and reset the device if it's previously configured
     pci_device_t *pci_device;
+    if (!pci_get_device(VIRTIO_VENDOR_ID, VIRTIO_DEVICE_ID, pci_device)) {
+        pci_scan_bus();
+    }
+
+    // Try again
     if (!pci_get_device(VIRTIO_VENDOR_ID, VIRTIO_DEVICE_ID, pci_device)) goto err1;
+
     virtio->vendor_id = pci_device->vendor_id;
     virtio->device_id = pci_device->device_id;
     virtio->bars = pci_device->bars;
@@ -144,17 +161,22 @@ void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i,
     memset(buf, 0, totalSize);
 
     // Configure the queue
-    vq->base_address = (uint64_t)buf;
+    vq->base_address = (uint32_t) buf;
     vq->available = (virtio_available*)&buf[sizeof_buffers];
     vq->used = (virtio_used*)&buf[(sizeof_buffers + sizeof_queue_available + 4095) & ~4095];
     vq->next_buffer = 0;
     vq->lock = 0;
+    vq->queue_size = queue_n;
 
     // Get the number of pages
     // Note: This step may not be necessary if you are passing the address directly and the device supports this
-    uint32_t buf_page = ((uint64_t)vq->base_address) >> 12;
-    // Inform the device the page address
-    outl(bar0_address + 0x08, buf_page);
+    // uint32_t buf_page = ((uint64_t)vq->base_address) >> 12;
+    // Inform the device the address
+    outl(bar0_address + 0x08, vq->base_address);
     
     vq->available->flags = 0;
+}
+
+uint64_t virtio_net_mac() {
+    return virtio_net.mac_address;
 }
