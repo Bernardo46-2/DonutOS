@@ -52,18 +52,16 @@ void tty_init() {
     history_ptr = 0;
     history_fst = -1;
     history_lst = -1;
+
+    tty_clear_scr();
 }
 
 // --------------------------------------------------------------- Output ----------------------------------------------------------------- //
 
 void tty_scroll(int n) {
 
-    if (n == 0) {
-        return;
-    }
-
     size_t gap = n * VGA_WIDTH;
-    uint16_t entry = vga_entry(' ', tty_color);
+    uint16_t entry = vga_entry(0, tty_color);
 
     if (gap > VGA_SCR_SIZE) {
         gap = VGA_SCR_SIZE;
@@ -71,18 +69,11 @@ void tty_scroll(int n) {
         gap = 0;
     }
 
-    if ( n > 0) {
+    if ( n >= 0) {
         for (size_t i = 0; i < VGA_SCR_SIZE - gap; i++) {
-            tty_buffer[i] = tty_buffer[i + gap];
+            tty_buffer[i] = vga_entry(tty_buffer[i + gap] & 0xFF, tty_color);
         }
         for (size_t i = VGA_SCR_SIZE - gap; i < VGA_SCR_SIZE; i++) {
-            tty_buffer[i] = entry;
-        }
-    } else {
-        for (size_t i = VGA_SCR_SIZE - 1; i >= -gap; i--) {
-            tty_buffer[i] = tty_buffer[i + gap];
-        }
-        for (size_t i = 0; i < -gap; i++) {
             tty_buffer[i] = entry;
         }
     }
@@ -93,13 +84,12 @@ void tty_scroll(int n) {
 
 inline void tty_set_color(const enum vga_color fg, const enum vga_color bg) {
     tty_color = vga_color(fg, bg);
+    tty_scroll(0);
 }
 
 void tty_update_cursor() {
     if (tty_ptr >= VGA_SCR_SIZE) {
        tty_scroll(TTY_ROW - VGA_HEIGHT + 1);
-    } else if (tty_ptr < 0) {
-        tty_scroll(TTY_ROW);
     }
 
     vga_move_cursor_to(tty_ptr);
@@ -262,6 +252,10 @@ static void __history_prev_buf() {
     }
 }
 
+uint16_t tty_get_color() {
+    return tty_color;
+}
+
 // ---------------------------------------------------------------- Input ----------------------------------------------------------------- //
 
 static void __tty_read_key(unsigned char key) {
@@ -269,7 +263,6 @@ static void __tty_read_key(unsigned char key) {
     tty_last_key = key;
 }
 
-// TODO: delete key
 static void __tty_handle_key() {
     tty_has_key_ready = 0;
     unsigned char key = tty_last_key;
@@ -327,7 +320,21 @@ static void __tty_handle_key() {
                }
                break;
            case KEY_DELETE:
-               // TODO: same as above
+                if(tty_input_len > 0 && tty_input_ptr < tty_input_len) {
+                     if(tty_input_ptr == tty_input_len-1) {
+                          tty_putc(' ');
+                          tty_input_len--;
+                     } else {
+                          for(size_t i = tty_ptr; i < tty_ptr+tty_input_len-1; i++) {
+                            tty_buffer[i] = tty_buffer[i+1];
+                          }
+                          tty_buffer[tty_ptr + tty_input_len-1] = vga_entry(' ', tty_color);
+                          tty_update_cursor();
+    
+                          memmove((void*)(tty_input_buf+tty_input_ptr), (void*)(tty_input_buf+tty_input_ptr+1), tty_input_len - tty_input_ptr);
+                          tty_input_len--;
+                     }
+                }
                break;
            default:
                if(tty_input_len > tty_input_ptr) {
@@ -365,6 +372,7 @@ void tty_read(char* dest) {
     memcpy(dest, tty_input_buf, tty_input_len+1);
 }
 
+
 // ---------------------------------------------------------------------------------------------------------------------------------------- //
 
 // TODO: move the command handler somewhere else
@@ -381,7 +389,10 @@ void tty_prompt() {
 
         if(strcmp(str, "donut") == 0) {
             tty_clear_scr();
+            vga_disable_cursor();
             donut();
+            vga_enable_cursor(14, 15);
+            tty_clear_scr();
         } else if(strcmp(str, "clear") == 0) {
             tty_clear_scr();
         } else if(strcmp(str, "help") == 0) {
@@ -391,6 +402,7 @@ void tty_prompt() {
             tty_puts("clear - clears the screen\n");
             tty_puts("donut - spin the donut\n");
             tty_puts("die   - throw an error\n");
+            tty_puts("color - set screen color\n");
             tty_puts("\n");
         } else if(strcmp(str, "about") == 0) {
             tty_puts("DonutOS\n");
@@ -403,7 +415,17 @@ void tty_prompt() {
             virtio_net_init();
         } else if(strcmp(str, "seg") == 0) {
             seg_test();
-        } else {
+        } else if(strcmp(str, "color") == 0) {
+            tty_puts("Enter color: ");
+            tty_read(str);
+            int color = atoi(str);
+            tty_puts("Background color: ");
+            tty_read(str);
+            int bg = atoi(str);
+            tty_puts("\n");
+            tty_set_color(color, bg);
+        } 
+        else {
             tty_puts("command `");
             tty_puts(str);
             tty_puts("` not found\n");
