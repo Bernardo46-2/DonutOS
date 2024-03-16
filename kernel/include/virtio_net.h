@@ -5,7 +5,7 @@
 
 // Documentation:
 // See: https://ozlabs.org/~rusty/virtio-spec/virtio-0.9.5.pdf
-// See: http://docs.oasis-open.org/virtio/virtio/v1.0/cs04/virtio-v1.0-cs04.html
+// See: https://docs.oasis-open.org/virtio/virtio/v1.3/virtio-v1.3.html
 // See: http://www.dumais.io/index.php?article=aca38a9a2b065b24dfa1dee728062a12
 
 #define VIRTIO_VENDOR_ID 0x1AF4
@@ -53,51 +53,67 @@
 #define VIRTIO_DEVICE_NEEDS_RESET 64
 #define VIRTIO_FAILED             128
 
+#define VIRTQ_DESC_F_NEXT 1 // This marks a buffer as continuing via the next field.
+#define VIRTQ_DESC_F_WRITE 2 // This marks a buffer as write-only (otherwise read-only).
+#define VIRTQ_DESC_F_INDIRECT 4 // This means the buffer contains a list of buffer descriptors.
+
+#define VIRTQ_BAR0_DEVICE_FEATURES 0x00 
+#define VIRTQ_BAR0_DRIVER_FEATURES 0x04
+#define VIRTQ_BAR0_QUEUE_ADDRESS 0x08
+#define VIRTQ_BAR0_QUEUE_SIZE 0x0C
+#define VIRTQ_BAR0_QUEUE_SELECT 0x0E
+#define VIRTQ_BAR0_QUEUE_NOTIFY 0x10
+#define VIRTQ_BAR0_STATUS 0x12
+#define VIRTQ_BAR0_ISR 0x13
+#define VIRTQ_BAR0_DEVICE_CONFIG 0x14
+
+
 
 typedef long long int64_t;
 typedef unsigned long long uint64_t;
 
+
+
+
 typedef struct {
-    uint32_t address;
-    uint32_t length;
+    uint16_t flags;
+    uint16_t idx;
+    uint16_t ring[256];
+    uint16_t used_event; // Interrupt event
+} virtq_avail;
+
+
+typedef struct {
+    uint32_t id;
+    uint32_t len;
+} virtq_used_item;
+
+typedef struct {
+    uint16_t flags;
+    uint16_t idx;
+    virtq_used_item ring[256];
+    uint16_t avail_event; // Interrupt event
+} virtq_used;
+
+
+
+typedef struct {
+    uint32_t __pad;
+    uint32_t addr;
+    uint32_t len;
     uint16_t flags;
     uint16_t next;
-} queue_buffer;
+} virtq_desc;
 
 typedef struct {
-    uint16_t flags;
-    uint16_t index;
-    uint16_t rings[];
-} virtio_available;
-
-typedef struct {
-    uint32_t index;
-    uint32_t length;
-} virtio_used_item;
-
-typedef struct {
-    uint16_t         flags;
-    uint16_t         index;
-    virtio_used_item rings[];
-} virtio_used;
-
-typedef struct
-{
-    uint16_t queue_size;
-    union
-    {
-        queue_buffer* buffers;
-        uint32_t base_address;
-    };
-    virtio_available* available;
-    virtio_used* used;
-    uint16_t last_used_index;
-    uint16_t last_available_index;
-    uint8_t* buffer;
-    uint32_t chunk_size;
-    uint16_t next_buffer;
-    uint64_t lock;
+    uint32_t* buffer;
+    virtq_desc* desc;
+    virtq_avail* available;
+    uint32_t next_buffer;
+    uint32_t queue_size;
+    virtq_used* used;
 } virt_queue;
+
 
 typedef struct {
     uint16_t   vendor_id;
@@ -112,7 +128,7 @@ typedef struct {
     uint16_t   vendor_id, device_id;
     uint32_t   io_address;
     uint8_t    irq;
-    virt_queue rx, tx, ctrl_queue;
+    virt_queue rx, tx;
     uint64_t   queue_n;
     uint64_t   mac_address;
 } virtio_net_device;
@@ -126,6 +142,15 @@ typedef struct
     uint16_t checksum_start;
     uint16_t checksum_offset;
 } net_header;
+
+typedef struct {
+    uint64_t mac;
+    uint16_t status;
+    uint16_t max_virtqueue_pairs;
+    uint16_t mtu;
+    uint32_t speed;
+    uint32_t duplex;
+} virtio_net_config;
 
 int virtio_net_init();
 uint64_t virtio_net_mac();

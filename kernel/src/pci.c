@@ -5,27 +5,17 @@
 #include "../../libc/include/malloc.h"
 #include "../../libc/include/printf.h"
 
-#define CONFIG_ADDRESS    0xCF8
-#define CONFIG_DATA       0xCFC
 
-// Constantes para identificação PCI
-#define PCI_VENDOR_ID     0x00
-#define PCI_DEVICE_ID     0x02
-#define PCI_CLASS_CODE    0x0b
-#define PCI_SUBCLASS      0x0a
-#define PCI_PROG_IF       0x09
-#define PCI_HEADER_TYPE   0x0e
-#define PCI_SECONDARY_BUS 0x19
 
 pci_device_t *devices = NULL;
 uint16_t devices_size = 0;
 
 static inline void pci_config_write_addr(uint32_t addr) {
-    outl(CONFIG_ADDRESS, addr);
+    outl(PCI_CONFIG_ADDRESS, addr);
 }
 
 static inline uint32_t pci_config_read_data() {
-    return inl(CONFIG_DATA);
+    return inl(PCI_CONFIG_DATA);
 }
 
 static uint32_t pci_config_read(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset) {

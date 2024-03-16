@@ -10,6 +10,7 @@
 #include "../../libc/include/string.h"
 #include "../../libc/include/printf.h"
 #include "../../libc/include/rand.h"
+#include "../../libc/include/malloc.h"
 #include "tty.h"
 
 #define TTY_INPUT_SIZE  512
@@ -442,10 +443,13 @@ void tty_prompt() {
         } else if(strcmp(str, "color") == 0) {
            __color_command(str);
         } else if (strcmp(str, "send") == 0) {
-            uint8_t buffer[100];
-            for (int i = 0; i < 100; i++) {
-                buffer[i] = i;
-            }
+            uint8_t* buffer = malloc(100);
+            
+                buffer[0] = 'd';
+                buffer[1] = 'o';
+                buffer[2] = 'n';
+                buffer[3] = 'u';
+                buffer[4] = 't';
             tty_puts("sending packet\n");
             switch (virtio_send_frame(buffer, 100)) {
                 case 0:
