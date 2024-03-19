@@ -11,37 +11,6 @@ static virtio_net_device virtio_net;
 
 
 
-int virtio_send_frame(uint8_t* buffer, uint32_t length) {
-    virt_queue* tx = &virtio_net.tx;
-
-    uint16_t i = tx->next_buffer;
-
-
-    if (tx->desc[i].flags == VIRTQ_DESC_F_WRITE) {
-        tx->desc[i].addr = (uint32_t) buffer;
-        tx->desc[i].len = length;
-        tx->desc[i].flags &= ~VIRTQ_DESC_F_WRITE;
-
-
-        tx->available->ring[tx->available->idx % tx->queue_size] = i;
-        tx->available->idx++;
-
-        tx->next_buffer = (i + 1) % tx->queue_size;
-
-        //Select the queue
-        outw(virtio_net.io_address + 0x0E, 1);
-
-        // Notify the device
-        outw(virtio_net.io_address + 0x10, tx->available->idx);
-
-        printf("Used idx: %d\n", tx->used->idx);
-    
-    } else {
-        return -1;
-    }
-
-    return 0;
-}
 
 // int virtio_receive_frame(uint8_t* buffer, uint32_t length) {
 //     virt_queue* rx = &virtio_net.rx;
@@ -184,8 +153,6 @@ void virtio_init_queues(virtio_device *virtio, uint32_t bar0_address) {
         if (size > 0) virtio_init_queue(virtio, bar0_address, q_addr, size);
     }
 
-
-
     virtio->queue_n = q_addr;
 }
 
@@ -195,39 +162,39 @@ void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i,
 
     // Create virtqueue memory
     uint32_t sizeof_descriptors =  queue_n * sizeof(virtq_desc);
-    uint32_t sizeof_queue_available =  queue_n * sizeof(uint16_t) + 6;
-    uint32_t sizeof_queue_used = queue_n * sizeof(virtq_used_item) + 6;
+    uint32_t sizeof_queue_available =  queue_n * sizeof(uint16_t) + (2*sizeof(uint16_t));
+    uint32_t sizeof_queue_used = queue_n * sizeof(virtq_used_item) + (2*sizeof(uint16_t));
     
 
-    uint32_t totalSize = sizeof_descriptors + sizeof_queue_available + sizeof_queue_used;
+    uint32_t totalSize = sizeof_descriptors + sizeof_queue_available;
 
-    //Align to 4096
+
+    //Align the size to be multiple of 4096
     totalSize = (totalSize + 0xFFF) & ~0xFFF;
 
+    totalSize = (totalSize + sizeof_queue_used + 0xFFF) & ~0xFFF;
+
     // Alloc the queue
-    void* base_address = (void*)malloc(totalSize);
-    memset(base_address, 0, totalSize);
+    void* buf = (void*)malloc(totalSize * 2);
+    memset(buf, 0, totalSize);
+
+    void * start = (void*)(((uint32_t)buf + 0xFFF) & ~0xFFF);
 
 
     // Configure the queue
-    vq->buffer = (uint32_t*) base_address;
-    vq->desc = (virtq_desc*) base_address;
-    vq->available = (virtq_avail*) base_address + sizeof_descriptors;
-    vq->used = (virtq_used*) totalSize - sizeof_queue_used;
-    vq->next_buffer = 0;
+    vq->buffer = (uint8_t*) start;
+    vq->desc = (virtq_desc*) start;
+    vq->available = (virtq_avail*) (start + sizeof_descriptors);
+    vq->used = (virtq_used*) (start + ((sizeof_descriptors + sizeof_queue_available + 0xFFF) & ~0xFFF));
     vq->queue_size = queue_n;
+    vq->buffer_size = totalSize;
 
-
-    for (int i = 0; i < queue_n; i++) {
-        vq->desc[i].flags = VIRTQ_DESC_F_WRITE;
-    }
-
-    // Get the number of pages
-    // Note: This step may not be necessary if you are passing the address directly and the device supports this
-    // uint32_t buf_page = ((uint64_t)vq->base_address) >> 12;
+    // The device stores only pages, not physical addresses
     // Inform the device the address
-    outl(bar0_address + 0x08,  (uint32_t)base_address);
-
+    outl(bar0_address + 0x08,  ((uint32_t)start) >> 12);
+    
+    printf("Address: %x\n", (uint32_t)start);
+    printf("Stored address: %x\n", inl(bar0_address + 0x08) << 12);
     
     //TODO: Implement interrupt handling
     vq->available->flags = 0; // Do not trigger an interrupt when the queue is empty
@@ -235,4 +202,78 @@ void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i,
 
 uint64_t virtio_net_mac() {
     return virtio_net.mac_address;
+}
+
+
+int virtio_send_frame(uint8_t* buffer, uint32_t length) {
+    virt_queue* tx = &virtio_net.tx;
+
+    uint16_t i = tx->desc_idx;
+
+
+    //TODO: TEST
+    //Select queue
+    outw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_SELECT, 0);
+    printf("Queue selected: %d\n", inw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_SELECT));
+    //Get the queue size
+    uint16_t size = inw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_SIZE);
+    printf("Queue size: %d\n", size);
+    //Get the queue address
+    uint32_t addr = inl(virtio_net.io_address + VIRTQ_BAR0_QUEUE_ADDRESS);
+    //Set the queue address
+    outl(virtio_net.io_address + VIRTQ_BAR0_QUEUE_ADDRESS, (uint32_t) tx->buffer >> 12);
+    //Status
+    printf("Status: %b\n", inb(virtio_net.io_address + VIRTQ_BAR0_STATUS));
+
+    printf("Address real / stored: %x / %x\n", (uint32_t) tx->buffer, inl(virtio_net.io_address + VIRTQ_BAR0_QUEUE_ADDRESS) << 12);
+
+    if (tx->desc[i].flags == 0) {
+        tx->desc[i].addr = (uint32_t) buffer;
+        tx->desc[i].len = length;
+        tx->desc[i].flags = 0x2; // Set the flag to 2 to indicate that the buffer is ready to be sent
+        tx->desc_idx = (i + 1) % tx->queue_size;
+
+
+        tx->available->ring[tx->available->idx % tx->queue_size] = i;
+        tx->available->idx++;
+
+
+        //dump virtio registers
+        for (int i = 0; i< 0x14; i++) {
+            printf("%2x %4x %8x \n", inb(virtio_net.io_address + i), inw(virtio_net.io_address + i), inl(virtio_net.io_address + i));
+            milisleep(500);
+        }
+    
+
+        // Notify the device
+        outl(virtio_net.io_address + 0x10, 0); // Notify the device that there is a new buffer to be sent
+        
+
+
+        printf("Used idx: %d\n", tx->used->idx);
+
+
+        printf("\nDescriptor: \n");
+        //dump memory
+        // for (int i = 0; i < tx->buffer_size; i++) {
+        //     if (i + (void *)tx->buffer == (void*) tx->available)
+        //         printf("\nAvailable: \n");
+        //     else if (i + (void *)tx->buffer == (void*) tx->used)
+        //         printf("\nUsed: \n");
+
+
+        //     if (tx->buffer[i] != 0)
+        //     printf("%x", tx->buffer[i]);
+        //      else if (tx->buffer[i] == 0 && tx->buffer[i+1] != 0) {
+        //          printf(" ");
+        //     }
+
+        // }
+        printf("\n");
+    
+    } else {
+       return -1;
+    }
+
+    return 0;
 }

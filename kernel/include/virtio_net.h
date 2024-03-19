@@ -106,12 +106,13 @@ typedef struct {
 } virtq_desc;
 
 typedef struct {
-    uint32_t* buffer;
+    uint8_t* buffer;
     virtq_desc* desc;
     virtq_avail* available;
-    uint32_t next_buffer;
-    uint32_t queue_size;
     virtq_used* used;
+    uint16_t desc_idx;
+    uint32_t queue_size;
+    uint32_t buffer_size;
 } virt_queue;
 
 

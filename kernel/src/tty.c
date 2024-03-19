@@ -443,23 +443,21 @@ void tty_prompt() {
         } else if(strcmp(str, "color") == 0) {
            __color_command(str);
         } else if (strcmp(str, "send") == 0) {
-            uint8_t* buffer = malloc(100);
+            uint8_t* buffer = malloc(4);
             
-                buffer[0] = 'd';
-                buffer[1] = 'o';
-                buffer[2] = 'n';
-                buffer[3] = 'u';
-                buffer[4] = 't';
-            tty_puts("sending packet\n");
-            switch (virtio_send_frame(buffer, 100)) {
-                case 0:
-                    tty_puts("packet sent\n");
-                    break;
-                case 1:
-                    tty_puts("queue full\n");
-                    break;
-                default:
-                    tty_puts("packet not sent\n");
+                buffer[3] = 0xda;
+                buffer[2] = 0xda;
+                buffer[1] = 0xda;
+                buffer[0] = 0xda;
+            
+            printf("sending packet\n");
+            virtio_send_frame(buffer, 4);
+        } else if (strcmp(str, "malloc") == 0) {
+            uint8_t* buffer = malloc(4096);
+            if (buffer != NULL) {
+                tty_puts("malloc success\n");
+            } else {
+                tty_puts("malloc failed\n");
             }
         } else {
             tty_puts("command `");
