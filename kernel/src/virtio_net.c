@@ -131,12 +131,12 @@ void negotiate(uint32_t *features) {
     DISABLE_FEATURE(*features, VIRTIO_GUEST_ANNOUNCE);
     DISABLE_FEATURE(*features, VIRTIO_CTRL_MAC_ADDR);
 
+    ENABLE_FEATURE(*features, VIRTIO_MQ);
     //Verify which queue layaout is supported
     if (HAS_FEATURE(*features, VIRTIO_MQ)) {
         printf("Split queues supported\n");
     }
 
-    ENABLE_FEATURE(*features, VIRTIO_CSUM);
 }
 
 void virtio_init_queues(virtio_device *virtio, uint32_t bar0_address) {
@@ -239,9 +239,9 @@ int virtio_send_frame(uint8_t* buffer, uint32_t length) {
 
 
         //dump virtio registers
-        for (int i = 0; i< 0x14; i++) {
-            printf("%2x %4x %8x \n", inb(virtio_net.io_address + i), inw(virtio_net.io_address + i), inl(virtio_net.io_address + i));
-            milisleep(500);
+        for (int i = 0; i<= 0x13; i++) {
+            printf("%x %2x %4x %8x \n", i, inb(virtio_net.io_address + i), inw(virtio_net.io_address + i), inl(virtio_net.io_address + i));
+            milisleep(300);
         }
     
 
