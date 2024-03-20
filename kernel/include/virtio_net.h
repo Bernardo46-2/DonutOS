@@ -98,8 +98,7 @@ typedef struct {
 
 
 typedef struct {
-    uint32_t __pad;
-    uint32_t addr;
+    uint64_t addr;
     uint32_t len;
     uint16_t flags;
     uint16_t next;

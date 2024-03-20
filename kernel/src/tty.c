@@ -449,7 +449,6 @@ void tty_prompt() {
                 buffer[2] = 0xda;
                 buffer[1] = 0xda;
                 buffer[0] = 0xda;
-            
             printf("sending packet\n");
             virtio_send_frame(buffer, 4);
         } else if (strcmp(str, "malloc") == 0) {
