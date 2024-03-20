@@ -207,73 +207,95 @@ uint64_t virtio_net_mac() {
 
 int virtio_send_frame(uint8_t* buffer, uint32_t length) {
     virt_queue* tx = &virtio_net.tx;
+    virt_queue* rx = &virtio_net.rx;
 
     uint16_t i = tx->desc_idx;
 
 
     //TODO: TEST
     //Select queue
-    outw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_SELECT, 0);
+    outw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_SELECT, 1);
     printf("Queue selected: %d\n", inw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_SELECT));
     //Get the queue size
     uint16_t size = inw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_SIZE);
     printf("Queue size: %d\n", size);
     //Get the queue address
     uint32_t addr = inl(virtio_net.io_address + VIRTQ_BAR0_QUEUE_ADDRESS);
-    //Set the queue address
-    outl(virtio_net.io_address + VIRTQ_BAR0_QUEUE_ADDRESS, (uint32_t) tx->buffer >> 12);
     //Status
     printf("Status: %b\n", inb(virtio_net.io_address + VIRTQ_BAR0_STATUS));
 
     printf("Address real / stored: %x / %x\n", (uint32_t) tx->buffer, inl(virtio_net.io_address + VIRTQ_BAR0_QUEUE_ADDRESS) << 12);
 
-    if (tx->desc[i].flags == 0) {
-        tx->desc[i].addr = (uint32_t) buffer;
-        tx->desc[i].len = length;
-        tx->desc[i].flags = 0x2; // Set the flag to 2 to indicate that the buffer is ready to be sent
-        tx->desc_idx = (i + 1) % tx->queue_size;
-
-
-        tx->available->ring[tx->available->idx % tx->queue_size] = i;
-        tx->available->idx++;
-
-
-        //dump virtio registers
-        for (int i = 0; i<= 0x13; i++) {
-            printf("%x %2x %4x %8x \n", i, inb(virtio_net.io_address + i), inw(virtio_net.io_address + i), inl(virtio_net.io_address + i));
-            milisleep(300);
-        }
     
-
-        // Notify the device
-        outl(virtio_net.io_address + 0x10, 0); // Notify the device that there is a new buffer to be sent
-        
-
-
-        printf("Used idx: %d\n", tx->used->idx);
+    tx->desc[i].addr = (uint32_t) buffer;
+    tx->desc[i].len = length;
+    tx->desc[i].flags = 0x2; // This is the last descriptor in the chain
+    tx->desc_idx = (i + 1) % tx->queue_size;
 
 
-        printf("\nDescriptor: \n");
-        //dump memory
-        // for (int i = 0; i < tx->buffer_size; i++) {
-        //     if (i + (void *)tx->buffer == (void*) tx->available)
-        //         printf("\nAvailable: \n");
-        //     else if (i + (void *)tx->buffer == (void*) tx->used)
-        //         printf("\nUsed: \n");
+    tx->available->ring[tx->available->idx % tx->queue_size] = i;
+    tx->available->idx++;
 
 
-        //     if (tx->buffer[i] != 0)
-        //     printf("%x", tx->buffer[i]);
-        //      else if (tx->buffer[i] == 0 && tx->buffer[i+1] != 0) {
-        //          printf(" ");
-        //     }
-
-        // }
-        printf("\n");
-    
-    } else {
-       return -1;
+    //dump virtio registers
+    for (int i = 0; i<= 0x13; i++) {
+        printf("%x %2x %4x %8x \n", i, inb(virtio_net.io_address + i), inw(virtio_net.io_address + i), inl(virtio_net.io_address + i));
+        milisleep(300);
     }
+
+
+    // Notify the device
+    outl(virtio_net.io_address + 0x10, 1); // Notify the device that there is a new buffer to be sent
+    
+    printf("Used idx: %d\n", tx->used->idx);
+
+
+
+    printf("\nDescriptor: \n");
+    //dump memory
+    for (int i = 0; i < tx->buffer_size; i++) {
+        if (i + (void *)tx->buffer == (void*) tx->available)
+            printf("\nAvailable: \n");
+        else if (i + (void *)tx->buffer == (void*) tx->used)
+            printf("\nUsed: \n");
+
+
+        if (tx->buffer[i] != 0)
+        printf("%x", tx->buffer[i]);
+         else if (tx->buffer[i] == 0 && tx->buffer[i+1] != 0) {
+             printf(" ");
+        }
+
+    }
+    printf("\n");
+
+    printf("\nDescriptor: \n");
+    //dump memory
+    for (int i = 0; i < rx->buffer_size; i++) {
+        if (i + (void *)rx->buffer == (void*) rx->available)
+            printf("\nAvailable: \n");
+        else if (i + (void *)rx->buffer == (void*) rx->used)
+            printf("\nUsed: \n");
+
+
+        if (rx->buffer[i] != 0)
+        printf("%x", rx->buffer[i]);
+         else if (rx->buffer[i] == 0 && rx->buffer[i+1] != 0) {
+             printf(" ");
+        }
+
+    }
+    printf("\n");
+
+
+    for (int i = 0; i < tx->queue_size; i++) {
+        if (tx->desc[i].flags != 0)
+        for (int k = 0; k < tx->desc[i].len; k++) {
+            printf("%x", *(uint8_t*)tx->desc[i].addr);
+        }
+    }
+    printf("\n");
+    
 
     return 0;
 }
