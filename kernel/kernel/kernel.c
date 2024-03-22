@@ -6,6 +6,7 @@
 #include "../include/irq.h"
 #include "../include/timer.h"
 #include "../include/kb.h"
+#include "../include/virtio_net.h"
 
 
 // LibC
@@ -35,11 +36,13 @@ extern void main() {
     pci_scan_bus();
     virtio_net_init();
     uint8_t packet[4] = {0x13, 0x37, 0xd4, 0x73};
-    uint8_t received_packet[2048];
+    uint8_t received_packet[virtio_net.rx.desc_size][FRAME_SIZE];
 
     while (1) {
         printf("Sending packet\n");
-        virtio_send_frame(packet, 4);
+
+        
+        
         if (virtio_receive_frame(received_packet, 2048) == 0) {
             printf("Received packet: %x %x %x %x\n", received_packet[0], received_packet[1], received_packet[2], received_packet[3]);
         }

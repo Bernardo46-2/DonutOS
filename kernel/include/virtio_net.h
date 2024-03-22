@@ -67,6 +67,8 @@
 #define VIRTQ_BAR0_ISR 0x13
 #define VIRTQ_BAR0_DEVICE_CONFIG 0x14
 
+#define FRAME_SIZE 1526 // including the net_header
+
 
 
 typedef long long int64_t;
@@ -78,7 +80,7 @@ typedef unsigned long long uint64_t;
 typedef struct {
     uint16_t flags;
     uint16_t idx;
-    uint16_t ring[256];
+    uint16_t rings[256];
     uint16_t used_event; // Interrupt event
 } virtq_avail;
 
@@ -91,7 +93,7 @@ typedef struct {
 typedef struct {
     uint16_t flags;
     uint16_t idx;
-    virtq_used_item ring[256];
+    virtq_used_item rings[256];
     uint16_t avail_event; // Interrupt event
 } virtq_used;
 
@@ -105,13 +107,19 @@ typedef struct {
 } virtq_desc;
 
 typedef struct {
-    uint8_t* buffer;
-    virtq_desc* desc;
-    virtq_avail* available;
-    virtq_used* used;
-    uint16_t desc_idx;
-    uint32_t queue_size;
+    uint8_t* buffer; // Start address of all buffers
     uint32_t buffer_size;
+    virtq_desc* desc;
+    uint32_t desc_size;
+    uint16_t desc_idx;
+    uint32_t desc_next;
+    virtq_avail* available;
+    uint16_t available_last_idx;
+    uint16_t available_queue_size;
+    virtq_used* used;
+    uint16_t used_last_idx;
+    uint16_t used_queue_size;
+    uint32_t* lock; // TODO: Implement a lock
 } virt_queue;
 
 
@@ -129,6 +137,7 @@ typedef struct {
     uint32_t   io_address;
     uint8_t    irq;
     virt_queue rx, tx;
+    virt_queue queues[3];
     uint64_t   queue_n;
     uint64_t   mac_address;
 } virtio_net_device;
@@ -152,6 +161,8 @@ typedef struct {
     uint32_t duplex;
 } virtio_net_config;
 
+virtio_net_device virtio_net;
+
 int virtio_net_init();
 uint64_t virtio_net_mac();
 void virtio_init_queues(virtio_device *virtio_pci, uint32_t bar0_address);
@@ -160,3 +171,4 @@ void negotiate(uint32_t *features);
 int virtio_init(virtio_device *virtio);
 int virtio_net_init();
 int virtio_send_frame(uint8_t* buffer, uint32_t length);
+virtio_net_device* virtio_net_get_device();
