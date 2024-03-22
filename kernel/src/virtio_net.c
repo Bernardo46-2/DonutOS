@@ -7,8 +7,8 @@
 #include "../../libc/include/malloc.h"
 #include "../../libc/include/time.h"
 
-virtio_net_device virtio_net;
 
+virtio_net_device virtio_net;
 
 
 void virtio_enable_interrupts(virt_queue* vq)
@@ -21,36 +21,53 @@ void virtio_disable_interrupts(virt_queue* vq)
     vq->used->flags = 1;
 }
 
-int virtio_receive_frame(uint8_t* buffer, uint32_t length) {
+void virtio_receive_frame() {
     virt_queue* rx = &virtio_net.rx;
     uint16_t i = rx->desc_idx;
 
-    if (rx->used->idx == rx->used_last_idx) return -1;
+    //Select queue
+    outw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_SELECT, 0);
+    printf("Queue selected: %d\n", inw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_SELECT));
+    //Get the queue size
+    uint16_t size = inw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_SIZE);
+    printf("Queue size: %d\n", size);
+    //Get the queue address
+    uint32_t addr = inl(virtio_net.io_address + VIRTQ_BAR0_QUEUE_ADDRESS);
+    //Status
+    printf("Status: %b\n", inb(virtio_net.io_address + VIRTQ_BAR0_STATUS));
+
+    printf("Address real / stored: %x / %x\n", (uint32_t) rx->desc, inl(virtio_net.io_address + VIRTQ_BAR0_QUEUE_ADDRESS) << 12);
+
+    milisleep(3000);
+
+    //Dump queue memory
+    printf("\nDescriptor: \n");
 
     for (int i = 0; i < rx->queue_size; i++) {
-        if (rx->desc[i].flags != 0) {
-            for (int k = 0; k < rx->desc[i].len; k++) {
-                printf("%x", *(uint8_t*)rx->desc[i].addr);
-            }
-        }
+        if (rx->desc[i].flags != 0)
+        {printf("%x %d %b %d\n", rx->desc[i].addr, rx->desc[i].len, rx->desc[i].flags, rx->desc[i].next);
+    
+        milisleep(10);}
     }
 
 
-    // // Get the descriptor index
-    // uint16_t desc_idx = rx->used->rings[rx->used->idx % rx->queue_size].id;
-    // rx->used->idx++;
+    printf("Available\n");
+    milisleep(3000);
+    for (int i = 0; i < rx->queue_size; i++) {
+        if (rx->available->rings[i] != 0)
+        {printf("%x", rx->available->rings[i]);
+        milisleep(10);}
+    }
 
-    // // Copy the data
-    // memset(buffer, 0, length);
-    // memcpy(buffer, (void*)rx->desc[desc_idx].addr, rx->desc[desc_idx].len);
 
-    // // Reset the descriptor
-    // rx->desc[desc_idx].addr = (uint32_t)rx->buffer + (desc_idx * sizeof(virtq_desc));
-    // rx->desc[desc_idx].len = 0;
-    // rx->desc[desc_idx].flags = 0;
-    // rx->desc[desc_idx].next = 0;
+    printf("Used\n");
+    milisleep(3000);
+    for (int i = 0; i < rx->queue_size; i++) {
+        if (rx->used->rings[i].id != 0)
+        {printf("%x", rx->used->rings[i].id);
+        milisleep(10);}
+    }
 
-    return 0;
 }
 
 
@@ -58,8 +75,7 @@ int virtio_net_init() {
     uint8_t *buf;
     virtio_device virtio_device;
     int err = virtio_init(&virtio_device);
-    if (err) goto err1;
-
+    if (err) return err;
 
     virtio_net.vendor_id = virtio_device.vendor_id;
     virtio_net.device_id = virtio_device.device_id;
@@ -75,7 +91,31 @@ int virtio_net_init() {
 
     
     // check if both queues were found.
-    if (virtio_net.rx.buffer == 0 || virtio_net.tx.buffer == 0) goto err2;
+    if (virtio_net.rx.buffer == 0 || virtio_net.tx.buffer == 0) {
+        return printf("device queue not found\n"), ERR_DEVICE_BAD_CONFIGURATION;
+    }
+
+    printf("Virtio Net device found\n");
+
+
+    // Init rx buffers
+    virt_queue* rx = &virtio_net.rx;
+    int size = 25;
+    virtq_desc* rx_desc = (virtq_desc*)malloc(sizeof(virtq_desc) * size);
+
+
+    printf("RX buffer size: %d\n", size);
+    for (int i = 0; i < size; i++) {
+        rx_desc[i].addr = (uint32_t)malloc(FRAME_SIZE);
+        rx_desc[i].len = FRAME_SIZE;
+        rx_desc[i].flags = 0;
+    }
+
+    virtio_send_descriptor(&virtio_net, 0, rx_desc, size);
+
+    // Enable interrupts
+    //virtio_enable_interrupts(rx);
+
 
     // Get MAC address
     uint64_t tempq = 0;
@@ -83,22 +123,7 @@ int virtio_net_init() {
         tempq = (tempq << 8) | inb(virtio_net.io_address + VIRTQ_BAR0_DEVICE_CONFIG + i);
     }
     virtio_net.mac_address = tempq;
-
-
-    // Start rx buffers
-    virt_queue* rx = &virtio_net.rx;
-
-    for (int i = 0; i < rx->queue_size; i++) {
-        rx->desc[i].addr = (uint32_t)rx->buffer + (i * sizeof(virtq_desc));
-        rx->desc[i].len = FRAME_SIZE;
-        rx->desc[i].flags = 0;
-        rx->desc[i].next = 0;
-    }
     
-
-    
-err1: return err;
-err2: return printf("device queue not found\n"), ERR_DEVICE_BAD_CONFIGURATION;
 }
 
 int virtio_init(virtio_device *virtio) {
@@ -332,8 +357,10 @@ int virtio_send_frame(uint8_t* buffer, uint32_t length) {
     return 0;
 }
 
-void virtio_send_buffer(virtio_net_device* dev, uint8_t queue_index, virtq_desc b[], int count)
+void virtio_send_descriptor(virtio_net_device* dev, uint8_t queue_index, virtq_desc b[], int count)
 {
+
+    printf("Sending descriptor\n");
     uint32_t i;
 
     // Get the queue
@@ -348,7 +375,7 @@ void virtio_send_buffer(virtio_net_device* dev, uint8_t queue_index, virtq_desc 
     vq->available->rings[index] = desc_index;
     for (i = 0; i < count; i++) {
 
-        next_buffer_index = (desc_index+1) % vq->desc_size;
+        next_buffer_index = (desc_index+1) % vq->queue_size;
 
         virtq_desc* bi = &b[i];
         vq->desc[desc_index].flags = bi->flags;
@@ -366,7 +393,7 @@ void virtio_send_buffer(virtio_net_device* dev, uint8_t queue_index, virtq_desc 
     vq->desc_next = desc_index;
 
     vq->available->idx++;
-    OUTPORTW(queue_index, dev->io_address+0x10);
+    outw(queue_index, dev->io_address+0x10);
 
     
 }

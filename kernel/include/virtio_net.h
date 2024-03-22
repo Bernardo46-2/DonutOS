@@ -100,25 +100,24 @@ typedef struct {
 
 
 typedef struct {
-    uint64_t addr;
+    uint32_t addr;
+    uint32_t __padding;
     uint32_t len;
     uint16_t flags;
     uint16_t next;
 } virtq_desc;
 
 typedef struct {
+    uint32_t queue_size; // Number of slots in the queue
     uint8_t* buffer; // Start address of all buffers
-    uint32_t buffer_size;
+    uint32_t buffer_size; // Size of all buffers in bytes
     virtq_desc* desc;
-    uint32_t desc_size;
     uint16_t desc_idx;
     uint32_t desc_next;
     virtq_avail* available;
     uint16_t available_last_idx;
-    uint16_t available_queue_size;
     virtq_used* used;
     uint16_t used_last_idx;
-    uint16_t used_queue_size;
     uint32_t* lock; // TODO: Implement a lock
 } virt_queue;
 
@@ -161,8 +160,6 @@ typedef struct {
     uint32_t duplex;
 } virtio_net_config;
 
-virtio_net_device virtio_net;
-
 int virtio_net_init();
 uint64_t virtio_net_mac();
 void virtio_init_queues(virtio_device *virtio_pci, uint32_t bar0_address);
@@ -171,4 +168,5 @@ void negotiate(uint32_t *features);
 int virtio_init(virtio_device *virtio);
 int virtio_net_init();
 int virtio_send_frame(uint8_t* buffer, uint32_t length);
-virtio_net_device* virtio_net_get_device();
+void virtio_send_descriptor(virtio_net_device* dev, uint8_t queue_index, virtq_desc b[], int count);
+void virtio_receive_frame();

@@ -11,6 +11,8 @@
 
 // LibC
 #include "../../libc/include/malloc.h"
+#include "../../libc/include/printf.h"
+#include "../../libc/include/time.h"
 
 void init_os() {
     // os stuff
@@ -35,19 +37,12 @@ extern void main() {
 
     pci_scan_bus();
     virtio_net_init();
-    uint8_t packet[4] = {0x13, 0x37, 0xd4, 0x73};
-    uint8_t received_packet[virtio_net.rx.desc_size][FRAME_SIZE];
 
     while (1) {
-        printf("Sending packet\n");
-
+        printf("Waiting for frame...\n");
         
-        
-        if (virtio_receive_frame(received_packet, 2048) == 0) {
-            printf("Received packet: %x %x %x %x\n", received_packet[0], received_packet[1], received_packet[2], received_packet[3]);
-        }
+        virtio_receive_frame();
         milisleep(1000);
-        //virtio_receive_frame(packet, 4);
     }
 
     tty_prompt();
