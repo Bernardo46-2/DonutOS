@@ -21,55 +21,6 @@ void virtio_disable_interrupts(virt_queue* vq)
     vq->used->flags = 1;
 }
 
-void virtio_receive_frame() {
-    virt_queue* rx = &virtio_net.rx;
-    uint16_t i = rx->desc_idx;
-
-    //Select queue
-    outw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_SELECT, 0);
-    printf("Queue selected: %d\n", inw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_SELECT));
-    //Get the queue size
-    uint16_t size = inw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_SIZE);
-    printf("Queue size: %d\n", size);
-    //Get the queue address
-    uint32_t addr = inl(virtio_net.io_address + VIRTQ_BAR0_QUEUE_ADDRESS);
-    //Status
-    printf("Status: %b\n", inb(virtio_net.io_address + VIRTQ_BAR0_STATUS));
-
-    printf("Address real / stored: %x / %x\n", (uint32_t) rx->desc, inl(virtio_net.io_address + VIRTQ_BAR0_QUEUE_ADDRESS) << 12);
-
-    milisleep(3000);
-
-    //Dump queue memory
-    printf("\nDescriptor: \n");
-
-    for (int i = 0; i < rx->queue_size; i++) {
-        if (rx->desc[i].flags != 0)
-        {printf("%x %d %b %d\n", rx->desc[i].addr, rx->desc[i].len, rx->desc[i].flags, rx->desc[i].next);
-    
-        milisleep(10);}
-    }
-
-
-    printf("Available\n");
-    milisleep(3000);
-    for (int i = 0; i < rx->queue_size; i++) {
-        if (rx->available->rings[i] != 0)
-        {printf("%x", rx->available->rings[i]);
-        milisleep(10);}
-    }
-
-
-    printf("Used\n");
-    milisleep(3000);
-    for (int i = 0; i < rx->queue_size; i++) {
-        if (rx->used->rings[i].id != 0)
-        {printf("%x", rx->used->rings[i].id);
-        milisleep(10);}
-    }
-
-}
-
 
 int virtio_net_init() {
     uint8_t *buf;
@@ -108,7 +59,7 @@ int virtio_net_init() {
     for (int i = 0; i < size; i++) {
         rx_desc[i].addr = (uint32_t)malloc(FRAME_SIZE);
         rx_desc[i].len = FRAME_SIZE;
-        rx_desc[i].flags = 0;
+        rx_desc[i].flags = VIRTQ_DESC_F_WRITE;
     }
 
     virtio_send_descriptor(&virtio_net, 0, rx_desc, size);
@@ -357,23 +308,102 @@ int virtio_send_frame(uint8_t* buffer, uint32_t length) {
     return 0;
 }
 
+void virtio_receive_frame() {
+    virt_queue* rx = &virtio_net.rx;
+    uint16_t i = rx->desc_idx;
+
+    //Select queue
+    outw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_SELECT, 0);
+    printf("Queue selected: %d\n", inw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_SELECT));
+    //Get the queue size
+    uint16_t size = inw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_SIZE);
+    printf("Queue size: %d\n", size);
+    //Get the queue address
+    uint32_t addr = inl(virtio_net.io_address + VIRTQ_BAR0_QUEUE_ADDRESS);
+    //Status
+    printf("Status: %b\n", inb(virtio_net.io_address + VIRTQ_BAR0_STATUS));
+
+    printf("Address real / stored: %x / %x\n", (uint32_t) rx->desc, inl(virtio_net.io_address + VIRTQ_BAR0_QUEUE_ADDRESS) << 12);
+
+    printf("Avalible idx %d\n", rx->available->idx);
+    printf("Used idx %d\n", rx->used->idx);
+
+    milisleep(3000);
+
+    // //Dump queue memory
+    printf("\nDescriptor: \n");
+
+    for (int i = 0; i < rx->queue_size; i++) {
+        if (rx->desc[i].flags != 0)
+        {
+            printf("%x %d %b %d\n", rx->desc[i].addr, rx->desc[i].len, rx->desc[i].flags, rx->desc[i].next);
+            milisleep(10);
+        }
+    }
+
+    printf("\n");
+    printf("Available\n");
+    milisleep(3000);
+    for (int i = 0; i < rx->available->idx; i++) {
+        printf("%x", rx->available->rings[i]);
+        milisleep(10);
+    }
+
+    printf("\n");
+    printf("Used\n");
+    milisleep(3000);
+    for (int i = 0; i < rx->used->idx; i++) {
+        printf("%x", rx->used->rings[i].id);
+        milisleep(10);
+    }
+
+    //Dump all memory buffer
+    // printf("Buffer\n");
+
+    // for (int i = 0; i < rx->buffer_size; i++) {
+    //     if (i + (void *)rx->buffer == (void*) rx->desc)
+    //         {
+    //             printf("\n");
+    //             printf("Descriptor: \n");
+    //         }
+    //     else if (i + (void *)rx->buffer == (void*) rx->available)
+    //         {
+    //             printf("\n");
+    //             printf("Available: \n");
+    //         }
+    //     else if (i + (void *)rx->buffer == (void*) rx->used)
+    //         {
+    //             printf("\n");
+    //             printf("Used: \n");
+    //         }
+
+    //     if (rx->buffer[i] != 0) {
+    //         printf("%x", rx->buffer[i]);
+    //     } else if (rx->buffer[i+1] != 0) {
+    //         printf(" ");
+    //     }
+    // }
+
+    printf("\n");
+    milisleep(3000);
+
+}
+
 void virtio_send_descriptor(virtio_net_device* dev, uint8_t queue_index, virtq_desc b[], int count)
 {
 
     printf("Sending descriptor\n");
-    uint32_t i;
 
     // Get the queue
     virt_queue* vq = &dev->queues[queue_index];
 
-    uint16_t index = vq->available->idx % vq->queue_size;
     uint16_t desc_index = vq->desc_next;
     uint16_t next_buffer_index;
 
     virtq_desc *buf = &vq->desc[desc_index];
 
-    vq->available->rings[index] = desc_index;
-    for (i = 0; i < count; i++) {
+    vq->available->rings[vq->available->idx % vq->queue_size] = desc_index;
+    for (int i = 0; i < count; i++) {
 
         next_buffer_index = (desc_index+1) % vq->queue_size;
 
@@ -393,7 +423,9 @@ void virtio_send_descriptor(virtio_net_device* dev, uint8_t queue_index, virtq_d
     vq->desc_next = desc_index;
 
     vq->available->idx++;
+
+    // Notify the device
     outw(queue_index, dev->io_address+0x10);
 
-    
+    virtio_disable_interrupts(vq);
 }
