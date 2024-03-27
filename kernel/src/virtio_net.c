@@ -139,11 +139,7 @@ void negotiate(uint32_t *features) {
     DISABLE_FEATURE(*features, VIRTIO_CTRL_MAC_ADDR);
 
     ENABLE_FEATURE(*features, VIRTIO_MQ);
-    //Verify which queue layaout is supported
-    if (HAS_FEATURE(*features, VIRTIO_MQ)) {
-        printf("Split queues supported\n");
-    }
-
+    
 }
 
 void virtio_init_queues(virtio_device *virtio, uint32_t bar0_address) {
@@ -173,13 +169,11 @@ void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i,
     uint32_t sizeof_queue_used = queue_n * sizeof(virtq_used_item) + (2*sizeof(uint16_t));
     
 
-    uint32_t totalSize = sizeof_descriptors + sizeof_queue_available;
+    uint32_t totalSize = sizeof_descriptors + sizeof_queue_available + sizeof_queue_used;
 
 
     //Align the size to be multiple of 4096
     totalSize = (totalSize + 0xFFF) & ~0xFFF;
-
-    totalSize = (totalSize + sizeof_queue_used + 0xFFF) & ~0xFFF;
 
     // Alloc the queue
     void* buf = (void*)malloc(totalSize + 4095);
@@ -328,7 +322,7 @@ void virtio_receive_frame() {
     printf("Avalible idx %d\n", rx->available->idx);
     printf("Used idx %d\n", rx->used->idx);
 
-    milisleep(3000);
+    milisleep(1000);
 
     // //Dump queue memory
     printf("\nDescriptor: \n");
@@ -343,7 +337,7 @@ void virtio_receive_frame() {
 
     printf("\n");
     printf("Available\n");
-    milisleep(3000);
+    milisleep(1000);
     for (int i = 0; i < rx->available->idx; i++) {
         printf("%x", rx->available->rings[i]);
         milisleep(10);
@@ -389,7 +383,7 @@ void virtio_receive_frame() {
 
 }
 
-void virtio_send_descriptor(virtio_net_device* dev, uint8_t queue_index, virtq_desc b[], int count)
+void virtio_send_descriptor(virtio_net_device* dev, uint8_t queue_index, virtq_desc buffers[], int count)
 {
 
     printf("Sending descriptor\n");
@@ -407,17 +401,16 @@ void virtio_send_descriptor(virtio_net_device* dev, uint8_t queue_index, virtq_d
 
         next_buffer_index = (desc_index+1) % vq->queue_size;
 
-        virtq_desc* bi = &b[i];
-        vq->desc[desc_index].flags = bi->flags;
+        vq->desc[desc_index].flags = buffers[i].flags;
 
         // Set the next flag if there are more buffers
         if (i != (count-1)) vq->desc[desc_index].flags |= VIRTQ_DESC_F_NEXT;
 
         vq->desc[desc_index].next = next_buffer_index;
-        vq->desc[desc_index].len = bi->len;
+        vq->desc[desc_index].len = buffers[i].len;
         
         
-        vq->desc[desc_index].addr = bi->addr;
+        vq->desc[desc_index].addr = buffers[i].addr;
         desc_index = next_buffer_index;
     }
     vq->desc_next = desc_index;
@@ -425,7 +418,7 @@ void virtio_send_descriptor(virtio_net_device* dev, uint8_t queue_index, virtq_d
     vq->available->idx++;
 
     // Notify the device
-    outw(queue_index, dev->io_address+0x10);
+    outw(dev->io_address + VIRTQ_BAR0_QUEUE_NOTIFY, queue_index);
 
     virtio_disable_interrupts(vq);
 }
