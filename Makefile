@@ -1,6 +1,7 @@
 QEMU = qemu-system-x86_64
 QEMUFLAGS = -drive format=raw,file=$(OS_FILE),index=0,if=ide, \
 -m 128M \
+-monitor stdio \
 -netdev user,id=mynet0,hostfwd=tcp::5555-:22 -device virtio-net-pci,netdev=mynet0,mac=de:ad:be:ef:dd:dd,id=virtio-dev -object filter-dump,id=f1,netdev=mynet0,file=$(BUILD_DIR)/net_dump.dat # Dump network traffic
 #-nic user,model=virtio-net-pci,mac=de:ad:be:ef:66:69,id=virtio-dev #user
 #-nic tap,id=mynet0,ifname=tap0,script=no,downscript=no,model=virtio-net-pci,mac=de:ad:be:ef:aa:aa #tap

@@ -11,12 +11,12 @@
 virtio_net_device virtio_net;
 
 
-void virtio_enable_interrupts(virt_queue* vq)
+inline void virtio_enable_interrupts(virt_queue* vq)
 {
     vq->used->flags = 0;
 }
 
-void virtio_disable_interrupts(virt_queue* vq)
+inline void virtio_disable_interrupts(virt_queue* vq)
 {
     vq->used->flags = 1;
 }
@@ -38,7 +38,7 @@ int virtio_net_init() {
     virtio_net.tx = virtio_device.queue[1];
     virtio_net.queues[0] = virtio_device.queue[0];
     virtio_net.queues[1] = virtio_device.queue[1];
-    virtio_net.queues[2] = virtio_device.queue[2];
+    virtio_net.queues[2] = virtio_device.queue[2]; // Ignored for now
 
     
     // check if both queues were found.
@@ -63,6 +63,29 @@ int virtio_net_init() {
     }
 
     virtio_send_descriptor(&virtio_net, 0, rx_desc, size);
+    
+    //TODO: Remove this
+    //Set all bits to 1
+    // WHY IT'S STILL WORKING???
+    for (int i = 0; i < rx->buffer_size; i++) {
+        *rx->buffer = 0xFF;
+    }
+    outw(virtio_net.io_address + VIRTQ_BAR0_QUEUE_NOTIFY, 0);
+
+
+    milisleep(5000);
+
+    //Dump queue memory
+    printf("\nDescriptors: \n");
+
+    for (int i = 0; i < rx->queue_size; i++) {
+        if (rx->desc[i].flags != 0)
+        {
+            printf("%x %d %b %d\n", rx->desc[i].addr, rx->desc[i].len, rx->desc[i].flags, rx->desc[i].next);
+            milisleep(10);
+        }
+    }
+    milisleep(3000);
 
     // Enable interrupts
     //virtio_enable_interrupts(rx);
@@ -169,18 +192,15 @@ void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i,
     uint32_t sizeof_queue_used = queue_n * sizeof(virtq_used_item) + (2*sizeof(uint16_t));
     
 
-    uint32_t totalSize = sizeof_descriptors + sizeof_queue_available + sizeof_queue_used;
+    uint32_t pageCount = PAGE_COUNT(sizeof_descriptors + sizeof_queue_available) + PAGE_COUNT(sizeof_queue_used);
 
-
-    //Align the size to be multiple of 4096
-    totalSize = (totalSize + 0xFFF) & ~0xFFF;
 
     // Alloc the queue
-    void* buf = (void*)malloc(totalSize + 4095);
-    memset(buf, 0, totalSize);
+    //TODO: Implement page allocation instead of calloc
+    void* buf = calloc(pageCount + 1, 1 << 12);
 
+    // Align the buffer to the start of a page
     void * start = (void*)(((uint32_t)buf + 0xFFF) & ~0xFFF);
-
 
     // Configure the queue
     vq->buffer = (uint8_t*) buf;
@@ -188,17 +208,17 @@ void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i,
     vq->available = (virtq_avail*) (start + sizeof_descriptors);
     vq->used = (virtq_used*) (start + ((sizeof_descriptors + sizeof_queue_available + 0xFFF) & ~0xFFF));
     vq->queue_size = queue_n;
-    vq->buffer_size = totalSize;
+    vq->buffer_size = pageCount << 12;
 
     // The device stores only pages, not physical addresses
     // Inform the device the address
-    outl(bar0_address + 0x08,  ((uint32_t)start) >> 12);
+    outl(bar0_address + 0x08,  UNMIRROR(((uint32_t)start) >> 12));
     
     printf("Address: %x\n", (uint32_t)start);
-    printf("Stored address: %x\n", inl(bar0_address + 0x08) << 12);
+    printf("Stored address: %x\n", MIRROR(inl(bar0_address + 0x08) << 12));
     
     //TODO: Implement interrupt handling
-    virtio_disable_interrupts(vq);
+    virtio_enable_interrupts(vq);
 }
 
 uint64_t virtio_net_mac() {
@@ -317,68 +337,28 @@ void virtio_receive_frame() {
     //Status
     printf("Status: %b\n", inb(virtio_net.io_address + VIRTQ_BAR0_STATUS));
 
-    printf("Address real / stored: %x / %x\n", (uint32_t) rx->desc, inl(virtio_net.io_address + VIRTQ_BAR0_QUEUE_ADDRESS) << 12);
-
-    printf("Avalible idx %d\n", rx->available->idx);
-    printf("Used idx %d\n", rx->used->idx);
+    printf("Address real / stored: 0x%x / 0x%x\n", (uint32_t) rx->desc, inl(virtio_net.io_address + VIRTQ_BAR0_QUEUE_ADDRESS) << 12);
+    printf("Rx mem addresses: desc: 0x%x, avail: 0x%x, used: 0x%x\n", (uint32_t)rx->desc, (uint32_t)rx->available, (uint32_t)rx->used);
 
     milisleep(1000);
 
-    // //Dump queue memory
-    printf("\nDescriptor: \n");
-
-    for (int i = 0; i < rx->queue_size; i++) {
-        if (rx->desc[i].flags != 0)
-        {
-            printf("%x %d %b %d\n", rx->desc[i].addr, rx->desc[i].len, rx->desc[i].flags, rx->desc[i].next);
+    printf("\n");
+    printf("Available idx %d\n", rx->available->idx);
+    for (int i = 0; i < rx->available->idx; i++) {
+            printf("%d ", rx->available->rings[i]);
+        if (rx->available->rings[i] != 0) {
             milisleep(10);
         }
     }
 
     printf("\n");
-    printf("Available\n");
-    milisleep(1000);
-    for (int i = 0; i < rx->available->idx; i++) {
-        printf("%x", rx->available->rings[i]);
-        milisleep(10);
-    }
-
-    printf("\n");
-    printf("Used\n");
-    milisleep(3000);
+    printf("Used idx %d\n", rx->used->idx);
     for (int i = 0; i < rx->used->idx; i++) {
-        printf("%x", rx->used->rings[i].id);
-        milisleep(10);
+            printf("%d ", rx->used->rings[i].id);
+        if (rx->used->rings[i].id != 0) {
+            milisleep(10);
+        }
     }
-
-    //Dump all memory buffer
-    // printf("Buffer\n");
-
-    // for (int i = 0; i < rx->buffer_size; i++) {
-    //     if (i + (void *)rx->buffer == (void*) rx->desc)
-    //         {
-    //             printf("\n");
-    //             printf("Descriptor: \n");
-    //         }
-    //     else if (i + (void *)rx->buffer == (void*) rx->available)
-    //         {
-    //             printf("\n");
-    //             printf("Available: \n");
-    //         }
-    //     else if (i + (void *)rx->buffer == (void*) rx->used)
-    //         {
-    //             printf("\n");
-    //             printf("Used: \n");
-    //         }
-
-    //     if (rx->buffer[i] != 0) {
-    //         printf("%x", rx->buffer[i]);
-    //     } else if (rx->buffer[i+1] != 0) {
-    //         printf(" ");
-    //     }
-    // }
-
-    printf("\n");
     milisleep(3000);
 
 }

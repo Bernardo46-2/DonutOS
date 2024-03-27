@@ -80,8 +80,7 @@ typedef unsigned long long uint64_t;
 typedef struct {
     uint16_t flags;
     uint16_t idx;
-    uint16_t rings[256];
-    uint16_t used_event; // Interrupt event
+    uint16_t rings[];
 } virtq_avail;
 
 
@@ -93,8 +92,7 @@ typedef struct {
 typedef struct {
     uint16_t flags;
     uint16_t idx;
-    virtq_used_item rings[256];
-    uint16_t avail_event; // Interrupt event
+    virtq_used_item rings[];
 } virtq_used;
 
 
