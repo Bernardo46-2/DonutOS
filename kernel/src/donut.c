@@ -21,12 +21,10 @@
 static char __quit = 0;
 static uint16_t __tty_color = 0;
 
-
-//TODO: remove this
 static void __donut_key_handler(uint8_t scancode) {
     __quit = 1;
     kb_set_key_handler(NULL);
-    tty_set_color(__tty_color & 0xff, __tty_color >> 8);
+    tty_set_color(__tty_color & 0xff, (__tty_color >> 16) & 0xff);
 }
 
 void donut() {
@@ -40,7 +38,7 @@ void donut() {
             __quit = 0;
             return;
         }
-        tty_set_color(frame/50 + 1, frame/200);
+        tty_set_color((frame/50 + 1) % 16, (__tty_color >> 16) % 16);
         memset(b, 32, 1760);  // text buffer
         memset(z, 127, 1760);   // z buffer
         int sj=0, cj=1024;

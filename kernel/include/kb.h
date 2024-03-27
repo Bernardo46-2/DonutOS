@@ -46,6 +46,7 @@
 #define KEY_SCROLL_LOCK 0x46
 #define KEY_NUM_LOCK    0x45
 
+uint8_t kb_last_key();
 void kb_set_key_handler(void (*key_handler)(unsigned char));
 void kb_init();
 

@@ -38,12 +38,20 @@ static struct {
     uint8_t scroll_lock : 1;
 } mods;
 
+static uint8_t __last_key = 0;
+
+inline uint8_t kb_last_key() {
+    return __last_key;
+}
+
 static void (*kb_key_handler)(unsigned char) = NULL;
 
 static void __kb_handler(regs_t* rs) {
     uint16_t scancode = inb(0x60);
     uint8_t key = SCANCODE_TO_KEY(scancode);
     uint8_t is_release = IS_RELEASE(scancode);
+
+    __last_key = key;
 
     switch(key) {
     case KEY_LSHIFT:

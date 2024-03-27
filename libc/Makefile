@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -ffreestanding -Iinclude -m32 -g -march=i386 -O2 -fno-pie -fno-stack-protector
+CFLAGS = -ffreestanding -Iinclude -m32 -g -march=i386 -fno-pie -fno-stack-protector
 
 SRC_DIR = src
 BUILD_DIR = ../build/libc

@@ -4,14 +4,13 @@
 #include "../include/donut.h"
 #include "../include/pci.h"
 #include "../include/virtio_net.h"
-#include "../include/seg.h"
+#include "../include/paging.h"
 
 #include "../../libc/include/atoi.h"
 #include "../../libc/include/string.h"
 #include "../../libc/include/printf.h"
 #include "../../libc/include/rand.h"
 #include "../../libc/include/malloc.h"
-#include "tty.h"
 
 #define TTY_INPUT_SIZE  512
 #define TTY_HISTORY_SIZE 16
@@ -82,7 +81,6 @@ void tty_scroll(int n) {
 
     tty_ptr -= gap;
 }
-
 
 inline void tty_set_color(const enum vga_color fg, const enum vga_color bg) {
     tty_color = vga_color(fg, bg);
@@ -400,8 +398,6 @@ static void __color_command(char str[TTY_INPUT_SIZE])  {
 // TODO: move the command handler somewhere else
 void tty_prompt() {
     char str[TTY_INPUT_SIZE];
-    mrand(1000);
-    srand(0);
     
     while(1) {
         tty_putc('>');
@@ -428,7 +424,7 @@ void tty_prompt() {
             tty_puts("rand  - print random number\n");
             tty_puts("pci   - scan pci bus\n");
             tty_puts("seg   - test segment fault\n");
-            tty_puts("send - send a packet\n");
+            tty_puts("send  - send a packet\n");
             tty_puts("\n");
         } else if(strcmp(str, "about") == 0) {
             tty_puts("DonutOS\n");
@@ -438,8 +434,6 @@ void tty_prompt() {
             printf("rand = %d\n", rand());
         } else if(strcmp(str, "pci") == 0) {
             __pci_command();
-        } else if(strcmp(str, "seg") == 0) {
-            seg_test();
         } else if(strcmp(str, "color") == 0) {
            __color_command(str);
         } else if (strcmp(str, "send") == 0) {

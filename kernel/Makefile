@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -ffreestanding -Iinclude -m32 -g -march=i386 -O2 -fno-pie -fno-stack-protector
+CFLAGS = -ffreestanding -Iinclude -m32 -g -march=i386 -fno-pie -fno-stack-protector
 
 LD = ld
 LDFLAGS = -Ttext 0x8000 --oformat binary -m elf_i386 
