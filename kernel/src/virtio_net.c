@@ -208,7 +208,7 @@ void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i,
     vq->available = (virtq_avail*) (start + sizeof_descriptors);
     vq->used = (virtq_used*) (start + ((sizeof_descriptors + sizeof_queue_available + 0xFFF) & ~0xFFF));
     vq->queue_size = queue_n;
-    vq->buffer_size = pageCount << 12;
+    vq->buffer_size = (pageCount + 1) << 12;
 
     // The device stores only pages, not physical addresses
     // Inform the device the address
