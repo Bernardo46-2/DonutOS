@@ -85,7 +85,7 @@ void* malloc(size_t size) {
 
 void* calloc(size_t size, size_t reg_size) {
     uint8_t* array = (uint8_t*)malloc(size * reg_size);
-    for(size_t i = 0; i < size; i++) array[i] = 0;
+    for(size_t i = 0; i < size * reg_size; i++) array[i] = 0;
     return (void*)array;
 }
 
