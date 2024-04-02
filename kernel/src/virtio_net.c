@@ -112,7 +112,9 @@ void virtio_init_queues(virtio_device *virtio, uint32_t bar0_address) {
 
 
 
-void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_n) {
+void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_size) {
+    printf("size x = %x\nsize d = %d", vring_size(queue_size), vring_size(queue_size));
+    // vring* vr = ;
     // virt_queue* vq = &virtio->queue[i];
     // memset(vq, 0, sizeof(virt_queue));
 

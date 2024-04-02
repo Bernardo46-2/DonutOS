@@ -71,30 +71,36 @@ typedef unsigned long long uint64_t;
 #define SECTOR_COUNT          27
 #define BLOCK_LENGTH          28
 
+// Buffers[QueueSIze]
 typedef struct {
-    uint64_t addr;
-    uint32_t len;
-    uint16_t flags;
-    uint16_t next;
+    uint64_t addr;  // 64-bit address of the buffer on the guest machine.
+    uint32_t len;   // 32-bit length of the buffer.
+    uint16_t flags; // 1: Next field contains linked buffer index;  
+                    // 2: Buffer is write-only (clear for read-only).
+                    // 4: Buffer contains additional buffer addresses.
+    uint16_t next;  // If flag is set, contains index of next buffer in chain.
 } vring_desc;
 
+// Available
 typedef struct {
-    uint16_t flags;
-    uint16_t idx;
-    uint16_t used_event;
-    uint16_t ring[];
+    uint16_t flags;       // 1: Do not trigger interrupts.
+    uint16_t idx;         // Index of the next ring index to be used.  (Last available ring buffer index+1)
+    uint16_t used_event;  // Only used if VIRTIO_F_EVENT_IDX was negotiated
+    uint16_t ring[];      // [QueueSize] List of available buffer indexes from the Buffers array above.
 } vring_avail;
 
+//  Ring
 typedef struct {
-    uint32_t id;
-    uint32_t len;
+    uint32_t id;   // Index of the used buffer in the Buffers array above.
+    uint32_t len;  // Total bytes written to buffer.
 } vring_used_elem;
 
+// Used
 typedef struct {
-    uint16_t flags;
-    uint16_t idx;
-    uint16_t avail_event;
-    vring_used_elem ring[];
+    uint16_t flags;         // 1: Do not notify device when buffers are added to available ring.
+    uint16_t idx;           // Index of the next ring index to be used.  (Last used ring buffer index+1)
+    uint16_t avail_event;   // Only used if VIRTIO_F_EVENT_IDX was negotiated
+    vring_used_elem ring[]; // [QueueSize]
 } vring_used;
 
 typedef struct {
@@ -115,6 +121,10 @@ static inline void vring_init(vring *vr, unsigned int num, void *p, uint32_t ali
 	vr->desc = (vring_desc*)p;
 	vr->avail = (vring_avail *)((char *)p + num * sizeof(vring_desc));
 	vr->used = (vring_used*)(((size_t)&vr->avail->ring[num] + align - 1) & ~(align - 1));
+}
+
+static inline int vring_need_event(uint16_t event_idx, uint16_t new_idx, uint16_t old_idx){
+    return (uint16_t)(new_idx - event_idx - 1) < (uint16_t)(new_idx - old_idx);
 }
 
 typedef struct {
