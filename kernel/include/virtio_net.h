@@ -114,7 +114,7 @@ static inline void vring_init(vring *vr, unsigned int num, void *p, uint32_t ali
 	vr->num = num;
 	vr->desc = (vring_desc*)p;
 	vr->avail = (vring_avail *)((char *)p + num * sizeof(vring_desc));
-	vr->used = (vring_used*)(((uint32_t)&vr->avail->ring[num] + align - 1) & ~(align - 1));
+	vr->used = (vring_used*)(((size_t)&vr->avail->ring[num] + align - 1) & ~(align - 1));
 }
 
 typedef struct {
