@@ -1,11 +1,15 @@
-#pragma once
+#ifndef _VIRTIO_H_
+#define _VIRTIO_H_
 
 #include "../../libc/include/types.h"
 #include "../include/pci.h"
 
+typedef long long int64_t;
+typedef unsigned long long uint64_t;
+
 // Documentation:
 // See: https://ozlabs.org/~rusty/virtio-spec/virtio-0.9.5.pdf
-// See: https://docs.oasis-open.org/virtio/virtio/v1.3/virtio-v1.3.html
+// See: http://docs.oasis-open.org/virtio/virtio/v1.0/cs04/virtio-v1.0-cs04.html
 // See: http://www.dumais.io/index.php?article=aca38a9a2b065b24dfa1dee728062a12
 
 #define VIRTIO_VENDOR_ID 0x1AF4
@@ -40,123 +44,98 @@
 
 #define DISABLE_FEATURE(v,feature)  v &= ~(1<<feature)
 #define ENABLE_FEATURE(v,feature)   v |=  (1<<feature)
-#define HAS_FEATURE(v,feature)      (v & (1<<feature))
-#define PAGE_COUNT(x) ((x+0xFFF)>>12)
-#define MIRROR_BIT 46
-#define MIRROR(x) (((uint64_t)x)|(1LL<<MIRROR_BIT))
-#define UNMIRROR(x) (((uint64_t)x)&~(1LL<<MIRROR_BIT))
 
 #define VIRTIO_ACKNOWLEDGE        1
-#define VIRTIO_DRIVER             2
-#define VIRTIO_DRIVER_OK          4
+#define VIRTIO_DRIVER_LOADED      2
+#define VIRTIO_DRIVER_READY       4
 #define VIRTIO_FEATURES_OK        8
 #define VIRTIO_DEVICE_NEEDS_RESET 64
+#define VIRTIO_DEVICE_ERROR       40
+#define VIRTIO_DRIVER_FAILED      80
 #define VIRTIO_FAILED             128
 
-#define VIRTQ_DESC_F_NEXT 1 // This marks a buffer as continuing via the next field.
-#define VIRTQ_DESC_F_WRITE 2 // This marks a buffer as write-only (otherwise read-only).
-#define VIRTQ_DESC_F_INDIRECT 4 // This means the buffer contains a list of buffer descriptors.
+#define DEVICE_FEATURES 0x00
+#define GUEST_FEATURES  0x04
+#define QUEUE_ADDRESS   0x08
+#define QUEUE_SIZE      0x0C
+#define QUEUE_SELECT    0x0E
+#define QUEUE_NOTIFY    0x10
+#define DEVICE_STATUS   0x12
+#define ISR_STATUS      0x13
 
-#define VIRTQ_BAR0_DEVICE_FEATURES 0x00 
-#define VIRTQ_BAR0_DRIVER_FEATURES 0x04
-#define VIRTQ_BAR0_QUEUE_ADDRESS 0x08
-#define VIRTQ_BAR0_QUEUE_SIZE 0x0C
-#define VIRTQ_BAR0_QUEUE_SELECT 0x0E
-#define VIRTQ_BAR0_QUEUE_NOTIFY 0x10
-#define VIRTQ_BAR0_STATUS 0x12
-#define VIRTQ_BAR0_ISR 0x13
-#define VIRTQ_BAR0_DEVICE_CONFIG 0x14
+#define TOTAL_SECTOR_COUNT    14
+#define MAXIMUM_SEGMENT_SIZE  1C
+#define MAXIMUM_SEGMENT_COUNT 20
+#define CYLINDER_COUNT        24
+#define HEAD_COUNT            26
+#define SECTOR_COUNT          27
+#define BLOCK_LENGTH          28
 
-
-
-typedef long long int64_t;
-typedef unsigned long long uint64_t;
-
-
-
+typedef struct {
+    uint64_t addr;
+    uint32_t len;
+    uint16_t flags;
+    uint16_t next;
+} vring_desc;
 
 typedef struct {
     uint16_t flags;
     uint16_t idx;
-    uint16_t ring[256];
-    uint16_t used_event; // Interrupt event
-} virtq_avail;
-
+    uint16_t used_event;
+    uint16_t ring[];
+} vring_avail;
 
 typedef struct {
     uint32_t id;
     uint32_t len;
-} virtq_used_item;
+} vring_used_elem;
 
 typedef struct {
     uint16_t flags;
     uint16_t idx;
-    virtq_used_item ring[256];
-    uint16_t avail_event; // Interrupt event
-} virtq_used;
-
-
+    uint16_t avail_event;
+    vring_used_elem ring[];
+} vring_used;
 
 typedef struct {
-    uint32_t __pad;
-    uint32_t addr;
-    uint32_t len;
-    uint16_t flags;
-    uint16_t next;
-} virtq_desc;
+    uint32_t num;
+    vring_desc  *desc;
+    vring_avail *avail;
+    vring_used  *used;
+} vring;
 
-typedef struct {
-    uint32_t* buffer;
-    virtq_desc* desc;
-    virtq_avail* available;
-    uint32_t next_buffer;
-    uint32_t queue_size;
-    virtq_used* used;
-} virt_queue;
+#define ALIGN(x) (((x)+4095) & ~4095)
+static inline unsigned vring_size(unsigned int qsz) {
+    return ALIGN(sizeof(vring_desc) * qsz + sizeof(uint16_t) * (2+qsz))
+        + ALIGN(sizeof(vring_used_elem) * qsz);
+}
 
+static inline void vring_init(vring *vr, unsigned int num, void *p, uint32_t align){
+	vr->num = num;
+	vr->desc = (vring_desc*)p;
+	vr->avail = (vring_avail *)((char *)p + num * sizeof(vring_desc));
+	vr->used = (vring_used*)(((uint32_t)&vr->avail->ring[num] + align - 1) & ~(align - 1));
+}
 
 typedef struct {
     uint16_t   vendor_id;
     uint16_t   device_id;
     pci_bars   bars;
     uint8_t    irq;
-    virt_queue queue[16];
-    uint32_t   queue_n;
+    // virt_queue queue[16];
+    uint64_t   queue_n;
 } virtio_device;
 
 typedef struct {
-    uint16_t   vendor_id, device_id;
+    uint16_t   vendor_id;
+    uint16_t   device_id;
     uint32_t   io_address;
     uint8_t    irq;
-    virt_queue rx, tx;
+    // virt_queue queue[3];
     uint64_t   queue_n;
     uint64_t   mac_address;
 } virtio_net_device;
 
-typedef struct
-{
-    uint8_t  flags;
-    uint8_t  gso_type;
-    uint16_t header_length;
-    uint16_t gso_size;
-    uint16_t checksum_start;
-    uint16_t checksum_offset;
-} net_header;
-
-typedef struct {
-    uint64_t mac;
-    uint16_t status;
-    uint16_t max_virtqueue_pairs;
-    uint16_t mtu;
-    uint32_t speed;
-    uint32_t duplex;
-} virtio_net_config;
-
 int virtio_net_init();
-uint64_t virtio_net_mac();
-void virtio_init_queues(virtio_device *virtio_pci, uint32_t bar0_address);
-void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_size);
-void negotiate(uint32_t *features);
-int virtio_init(virtio_device *virtio);
-int virtio_net_init();
-int virtio_send_frame(uint8_t* buffer, uint32_t length);
+
+#endif
