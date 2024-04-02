@@ -94,51 +94,35 @@ err2:
 }
 
 void virtio_init_queues(virtio_device *virtio, uint32_t bar0_address) {
-    uint16_t q_addr = -1;
+    uint16_t q_addr = 0;
     uint16_t size   = -1;
 
-    while (size != 0)
+    while (q_addr < 2) // hardfix, should use (size != 0)
     {
-        q_addr++;
         // Write the queue address that we want to access
         outw(bar0_address + QUEUE_SELECT, q_addr);
         // Now read the size. The size is not the byte size but rather the element count.
         size = inw(bar0_address + QUEUE_SIZE);
         if (size > 0) virtio_init_queue(virtio, bar0_address, q_addr, size);
+        q_addr++;
     }
 
     virtio->queue_n = q_addr;
 }
 
-
-
 void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_size) {
-    printf("queue %d | size x = %x | size d = %d\n", i, vring_size(queue_size), vring_size(queue_size));
+    uint32_t size = vring_size(queue_size);
+    // vring* vr = malloc(size);
+    // memset(vr, 0, size);
+    printf("queue %d | size x = %x | size d = %d\n", i, size, size);
 
-    // vring* vr = ;
-    // virt_queue* vq = &virtio->queue[i];
-    // memset(vq, 0, sizeof(virt_queue));
-
-    // // Create virtqueue memory
-    // uint32_t sizeof_buffers = (sizeof(queue_buffer) * queue_n);
-    // uint32_t sizeof_queue_available = (2 * sizeof(uint16_t)) + (queue_n * sizeof(uint16_t));
-    // uint32_t sizeof_queue_used = (2 * sizeof(uint16_t)) + (queue_n * sizeof(virtio_used_item));
-    
-    // // Make totalSize a multiple of 4096
-    // uint32_t totalSize = sizeof_buffers + sizeof_queue_available + sizeof_queue_used;
-    // totalSize += 4095;
-    // totalSize &= ~4095;
-
-    // // Alloc the queue
-    // uint8_t* buf = (uint8_t*)malloc(totalSize);
-    // memset(buf, 0, totalSize);
-
+    // vring_init();
     // // Configure the queue
-    // vq->base_address = (uint64_t)buf;
-    // vq->available = (virtio_available*)&buf[sizeof_buffers];
-    // vq->used = (virtio_used*)&buf[(sizeof_buffers + sizeof_queue_available + 4095) & ~4095];
-    // vq->next_buffer = 0;
-    // vq->lock = 0;
+    // vr->base_address = (uint64_t)buf;
+    // vr->available = (virtio_available*)&buf[sizeof_buffers];
+    // vr->used = (virtio_used*)&buf[(sizeof_buffers + sizeof_queue_available + 4095) & ~4095];
+    // vr->next_buffer = 0;
+
 
     // // Get the number of pages
     // // Note: This step may not be necessary if you are passing the address directly and the device supports this
