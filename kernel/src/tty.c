@@ -373,6 +373,13 @@ void tty_read(char* dest) {
 static void __pci_command() {
     pci_scan_bus();
     virtio_net_init();
+
+    printf("MAC address = ");
+    for (int i = 0; i < 6; i++) {
+        if (i > 0) printf(":");
+        // printf("%02X", (virtio_net_mac() >> ((5 - i) * 8)) & 0xFF);
+    }
+    printf("\n");
 }
 
 static void __color_command(char str[TTY_INPUT_SIZE])  {
@@ -391,6 +398,8 @@ static void __color_command(char str[TTY_INPUT_SIZE])  {
 // TODO: move the command handler somewhere else
 void tty_prompt() {
     char str[TTY_INPUT_SIZE];
+    
+    // fat cursor
     vga_enable_cursor(0, 15);
     
     while(1) {
@@ -431,6 +440,25 @@ void tty_prompt() {
         } else if(strcmp(str, "color") == 0) {
            __color_command(str);
         } else if (strcmp(str, "send") == 0) {
+            uint8_t* buffer = malloc(100);
+            
+                buffer[0] = 'd';
+                buffer[1] = 'o';
+                buffer[2] = 'n';
+                buffer[3] = 'u';
+                buffer[4] = 't';
+            tty_puts("sending packet\n");
+            // switch (virtio_send_frame(buffer, 100)) {
+            //     case 0:
+            //         tty_puts("packet sent\n");
+            //         break;
+            //     case 1:
+            //         tty_puts("queue full\n");
+            //         break;
+            //     default:
+            //         tty_puts("packet not sent\n");
+            // }
+        } else {
             tty_puts("command `");
             tty_puts(str);
             tty_puts("` not found\n");
