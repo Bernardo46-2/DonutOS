@@ -35,7 +35,7 @@ extern void main() {
     
     srand(timer_get() * kb_last_key());
     int x, y;
-    
+
     tty_clear_scr();
     tty_prompt();
     while(1);
