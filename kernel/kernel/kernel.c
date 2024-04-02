@@ -31,18 +31,12 @@ void init_os() {
 
 extern void main() {
     init_os();
-    
     donut();
-    tty_clear_scr();
-    // mrand(timer_get() / (kb_last_key() | 0x1));
+    
     srand(timer_get() * kb_last_key());
     int x, y;
     
-     __asm__ __volatile__ (
-        "divl %3"  // Divide EDX:EAX pelo divisor
-        : "=a" (x), "=d" (y)  // Saídas
-        : "a" (0), "r" (0), "d" (0)  // Entradas
-    );
+    tty_clear_scr();
     tty_prompt();
     while(1);
 }
