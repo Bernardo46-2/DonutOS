@@ -4,6 +4,9 @@
 #include "../../libc/include/types.h"
 #include "../include/pci.h"
 
+typedef long long int64_t;
+typedef unsigned long long uint64_t;
+
 // Documentation:
 // See: https://ozlabs.org/~rusty/virtio-spec/virtio-0.9.5.pdf
 // See: http://docs.oasis-open.org/virtio/virtio/v1.0/cs04/virtio-v1.0-cs04.html
@@ -41,70 +44,85 @@
 
 #define DISABLE_FEATURE(v,feature)  v &= ~(1<<feature)
 #define ENABLE_FEATURE(v,feature)   v |=  (1<<feature)
-#define HAS_FEATURE(v,feature)      (v & (1<<feature))
-#define PAGE_COUNT(x) ((x+0xFFF)>>12)
-#define MIRROR_BIT 46
-#define MIRROR(x) (((uint64_t)x)|(1LL<<MIRROR_BIT))
-#define UNMIRROR(x) (((uint64_t)x)&~(1LL<<MIRROR_BIT))
 
 #define VIRTIO_ACKNOWLEDGE        1
-#define VIRTIO_DRIVER             2
-#define VIRTIO_DRIVER_OK          4
+#define VIRTIO_DRIVER_LOADED      2
+#define VIRTIO_DRIVER_READY       4
 #define VIRTIO_FEATURES_OK        8
 #define VIRTIO_DEVICE_NEEDS_RESET 64
+#define VIRTIO_DEVICE_ERROR       40
+#define VIRTIO_DRIVER_FAILED      80
 #define VIRTIO_FAILED             128
 
-typedef long long int64_t;
-typedef unsigned long long uint64_t;
+#define DEVICE_FEATURES 0x00
+#define GUEST_FEATURES  0x04
+#define QUEUE_ADDRESS   0x08
+#define QUEUE_SIZE      0x0C
+#define QUEUE_SELECT    0x0E
+#define QUEUE_NOTIFY    0x10
+#define DEVICE_STATUS   0x12
+#define ISR_STATUS      0x13
+
+#define TOTAL_SECTOR_COUNT    14
+#define MAXIMUM_SEGMENT_SIZE  1C
+#define MAXIMUM_SEGMENT_COUNT 20
+#define CYLINDER_COUNT        24
+#define HEAD_COUNT            26
+#define SECTOR_COUNT          27
+#define BLOCK_LENGTH          28
 
 typedef struct {
-    uint64_t address;
-    uint32_t length;
+    uint64_t addr;
+    uint32_t len;
     uint16_t flags;
     uint16_t next;
-} queue_buffer;
+} vring_desc;
 
 typedef struct {
     uint16_t flags;
-    uint16_t index;
-    uint16_t rings[];
-} virtio_available;
+    uint16_t idx;
+    uint16_t used_event;
+    uint16_t ring[];
+} vring_avail;
 
 typedef struct {
-    uint32_t index;
-    uint32_t length;
-} virtio_used_item;
+    uint32_t id;
+    uint32_t len;
+} vring_used_elem;
 
 typedef struct {
-    uint16_t         flags;
-    uint16_t         index;
-    virtio_used_item rings[];
-} virtio_used;
+    uint16_t flags;
+    uint16_t idx;
+    uint16_t avail_event;
+    vring_used_elem ring[];
+} vring_used;
 
-typedef struct
-{
-    uint16_t queue_size;
-    union
-    {
-        queue_buffer* buffers;
-        uint64_t base_address;
-    };
-    virtio_available* available;
-    virtio_used* used;
-    uint16_t last_used_index;
-    uint16_t last_available_index;
-    uint8_t* buffer;
-    uint32_t chunk_size;
-    uint16_t next_buffer;
-    uint64_t lock;
-} virt_queue;
+typedef struct {
+    uint32_t num;
+    vring_desc  *desc;
+    vring_avail *avail;
+    vring_used  *used;
+} vring;
+
+#define ALIGN(x) (((x)+4095) & ~4095)
+static inline unsigned vring_size(unsigned int qsz) {
+    return ALIGN(sizeof(vring_desc) * qsz + sizeof(uint16_t) * (2+qsz))
+        + ALIGN(sizeof(vring_used_elem) * qsz);
+}
+
+static inline void vring_init(vring *vr, unsigned int num, void *p, uint32_t align){
+	vr->num = num;
+	vr->desc = (vring_desc*)p;
+	vr->avail = (vring_avail *)((char *)p + num * sizeof(vring_desc));
+	vr->used = (vring_used*)(((uint32_t)&vr->avail->ring[num] + align - 1) & ~(align - 1));
+}
 
 typedef struct {
     uint16_t   vendor_id;
     uint16_t   device_id;
     pci_bars   bars;
     uint8_t    irq;
-    virt_queue queue[16];
+    // virt_queue queue[16];
     uint64_t   queue_n;
 } virtio_device;
 
@@ -113,20 +131,10 @@ typedef struct {
     uint16_t   device_id;
     uint32_t   io_address;
     uint8_t    irq;
-    virt_queue queue[3];
+    // virt_queue queue[3];
     uint64_t   queue_n;
     uint64_t   mac_address;
 } virtio_net_device;
-
-typedef struct
-{
-    uint8_t  flags;
-    uint8_t  gso_type;
-    uint16_t header_length;
-    uint16_t gso_size;
-    uint16_t checksum_start;
-    uint16_t checksum_offset;
-} net_header;
 
 int virtio_net_init();
 
