@@ -31,6 +31,7 @@ void donut() {
     int8_t b[1760], z[1760];
     int sA=1024,cA=0,sB=1024,cB=0,_,frame=0;
     char str[10];
+    vga_disable_cursor();
     __tty_color = tty_get_color();
     kb_set_key_handler(__donut_key_handler);
     for (;;frame++) {

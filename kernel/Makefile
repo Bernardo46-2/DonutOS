@@ -1,5 +1,12 @@
-CC = gcc
-CFLAGS = -ffreestanding -Iinclude -m32 -g -march=i386 -fno-pie -fno-stack-protector
+CROSS_COMPILER := $(shell command -v /usr/local/i386elfgcc/bin/i386-elf-gcc 2> /dev/null)
+
+ifdef CROSS_COMPILER
+	CC = /usr/local/i386elfgcc/bin/i386-elf-gcc
+	CFLAGS = -ffreestanding -Iinclude -m32 -g
+else
+	CC = gcc
+	CFLAGS = -ffreestanding -Iinclude -m32 -g -march=i386 -fno-pie -fno-stack-protector
+endif
 
 LD = ld
 LDFLAGS = -Ttext 0x8000 --oformat binary -m elf_i386 

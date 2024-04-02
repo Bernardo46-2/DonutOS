@@ -377,7 +377,7 @@ static void __pci_command() {
     printf("MAC address = ");
     for (int i = 0; i < 6; i++) {
         if (i > 0) printf(":");
-        printf("%02X", (virtio_net_mac() >> ((5 - i) * 8)) & 0xFF);
+        // printf("%02X", (virtio_net_mac() >> ((5 - i) * 8)) & 0xFF);
     }
     printf("\n");
 }
@@ -398,6 +398,7 @@ static void __color_command(char str[TTY_INPUT_SIZE])  {
 // TODO: move the command handler somewhere else
 void tty_prompt() {
     char str[TTY_INPUT_SIZE];
+    vga_enable_cursor(0, 15);
     
     while(1) {
         tty_putc('>');
@@ -445,16 +446,16 @@ void tty_prompt() {
                 buffer[3] = 'u';
                 buffer[4] = 't';
             tty_puts("sending packet\n");
-            switch (virtio_send_frame(buffer, 100)) {
-                case 0:
-                    tty_puts("packet sent\n");
-                    break;
-                case 1:
-                    tty_puts("queue full\n");
-                    break;
-                default:
-                    tty_puts("packet not sent\n");
-            }
+            // switch (virtio_send_frame(buffer, 100)) {
+            //     case 0:
+            //         tty_puts("packet sent\n");
+            //         break;
+            //     case 1:
+            //         tty_puts("queue full\n");
+            //         break;
+            //     default:
+            //         tty_puts("packet not sent\n");
+            // }
         } else {
             tty_puts("command `");
             tty_puts(str);
