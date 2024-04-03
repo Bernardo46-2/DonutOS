@@ -99,6 +99,7 @@ void virtio_init_queues(virtio_device *virtio, uint32_t bar0_address) {
 
     while (q_addr < 2) // hardfix, should use (size != 0)
     {
+        printf("ue");
         // Write the queue address that we want to access
         outw(bar0_address + QUEUE_SELECT, q_addr);
         // Now read the size. The size is not the byte size but rather the element count.
@@ -112,23 +113,13 @@ void virtio_init_queues(virtio_device *virtio, uint32_t bar0_address) {
 
 void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_size) {
     uint32_t size = vring_size(queue_size);
-    // vring* vr = malloc(size);
-    // memset(vr, 0, size);
-    printf("queue %d | size x = %x | size d = %d\n", i, size, size);
+    vring* vr = calloc(sizeof(vring*), 1);
+    void* p = (void*)(ALIGN((size_t)calloc(size + 4095, 1)));
 
-    // vring_init();
-    // // Configure the queue
-    // vr->base_address = (uint64_t)buf;
-    // vr->available = (virtio_available*)&buf[sizeof_buffers];
-    // vr->used = (virtio_used*)&buf[(sizeof_buffers + sizeof_queue_available + 4095) & ~4095];
-    // vr->next_buffer = 0;
+    vring_init(vr, queue_size, p, 4096);
 
-
-    // // Get the number of pages
-    // // Note: This step may not be necessary if you are passing the address directly and the device supports this
-    // uint32_t buf_page = ((uint64_t)vq->base_address) >> 12;
-    // // Inform the device the page address
-    // outl(bar0_address + 0x08, buf_page);
+    outl(bar0_address + QUEUE_ADDRESS, ((size_t)vr->desc >> 12));
+    printf("size = %d | %x\n", size + 4095, size + 4095);
     
     // vq->available->flags = 0;
 }
