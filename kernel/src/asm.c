@@ -18,6 +18,26 @@ inline uint16_t get_if() {
     return flags & (1 << 9);
 }
 
+inline uint32_t get_cr0() {
+    uint32_t cr0;
+    __asm__ __volatile__ ( "mov %%cr0, %0" : "=r" (cr0));
+    return cr0;
+}
+
+inline void set_cr0(uint32_t value) {
+    __asm__ __volatile__ ( "mov %0, %%cr0" : : "r" (value));
+}
+
+inline uint32_t get_cr3() {
+    uint32_t cr3;
+    __asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (cr3));
+    return cr3;
+}
+
+inline void set_cr3(uint32_t value) {
+    __asm__ __volatile__ ( "mov %0, %%cr3" : : "r" (value));
+}
+
 inline void outb(uint16_t port, uint8_t data) {
     __asm__ __volatile__ ("outb %0, %1" : : "a"(data), "Nd"(port));
 }

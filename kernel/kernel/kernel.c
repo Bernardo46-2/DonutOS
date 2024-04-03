@@ -9,6 +9,7 @@
 #include "../include/irq.h"
 #include "../include/timer.h"
 #include "../include/kb.h"
+#include "../include/blue_scr.h"
 
 // LibC
 #include "../../libc/include/malloc.h"
@@ -29,12 +30,18 @@ void init_os() {
     kb_init();
 }
 
+void intentional_design() {
+    if(rand() % 100 == 1) {
+        blue_scr(666, "the pumpkins are ready to march on mankind");
+    }
+}
+
 extern void main() {
     init_os();
     donut();
     
     srand(timer_get() * kb_last_key());
-    int x, y;
+    intentional_design();
 
     tty_clear_scr();
     tty_prompt();
