@@ -3,8 +3,11 @@
 
 #include "types.h"
 
-#define HEAP_ADDRESS 0x50000
-#define STACK_ADDRESS 0x7ffff
+// #define HEAP_ADDRESS 0x50000
+// #define STACK_ADDRESS 0x7ffff
+
+#define HEAP_ADDRESS 0x00100000
+#define STACK_ADDRESS 0x00f00000
 
 extern const uint32_t HEAP_MAX_SIZE;
 

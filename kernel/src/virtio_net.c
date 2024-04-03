@@ -35,6 +35,15 @@ int virtio_net_init() {
     }
     virtio_net.mac_address = tempq;
 
+    printf("DEVICE_FEATURES = %32b\n", inl(virtio_net.io_address + DEVICE_FEATURES));
+    printf("GUEST_FEATURES  = %32b\n", inl(virtio_net.io_address + GUEST_FEATURES));
+    printf("QUEUE_ADDRESS   = %32b\n", inl(virtio_net.io_address + QUEUE_ADDRESS));
+    printf("QUEUE_SIZE      = %32b\n", inw(virtio_net.io_address + QUEUE_SIZE));
+    printf("QUEUE_SELECT    = %32b\n", inw(virtio_net.io_address + QUEUE_SELECT));
+    printf("QUEUE_NOTIFY    = %32b\n", inw(virtio_net.io_address + QUEUE_NOTIFY));
+    printf("DEVICE_STATUS   = %32b\n", inb(virtio_net.io_address + DEVICE_STATUS));
+    printf("ISR_STATUS      = %32b\n", inb(virtio_net.io_address + ISR_STATUS));
+
 err1: return err;
 err2: return printf("device queue not found\n"), ERR_DEVICE_BAD_CONFIGURATION;
 }
@@ -99,7 +108,6 @@ void virtio_init_queues(virtio_device *virtio, uint32_t bar0_address) {
 
     while (q_addr < 2) // hardfix, should use (size != 0)
     {
-        printf("ue");
         // Write the queue address that we want to access
         outw(bar0_address + QUEUE_SELECT, q_addr);
         // Now read the size. The size is not the byte size but rather the element count.
@@ -113,13 +121,8 @@ void virtio_init_queues(virtio_device *virtio, uint32_t bar0_address) {
 
 void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_size) {
     uint32_t size = vring_size(queue_size);
-    vring* vr = calloc(sizeof(vring*), 1);
+    vring* vr = calloc(sizeof(vring), 1);
     void* p = (void*)(ALIGN((size_t)calloc(size + 4095, 1)));
-
     vring_init(vr, queue_size, p, 4096);
-
     outl(bar0_address + QUEUE_ADDRESS, ((size_t)vr->desc >> 12));
-    printf("size = %d | %x\n", size + 4095, size + 4095);
-    
-    // vq->available->flags = 0;
 }

@@ -373,13 +373,6 @@ void tty_read(char* dest) {
 static void __pci_command() {
     pci_scan_bus();
     virtio_net_init();
-
-    printf("MAC address = ");
-    for (int i = 0; i < 6; i++) {
-        if (i > 0) printf(":");
-        // printf("%02X", (virtio_net_mac() >> ((5 - i) * 8)) & 0xFF);
-    }
-    printf("\n");
 }
 
 static void __color_command(char str[TTY_INPUT_SIZE])  {

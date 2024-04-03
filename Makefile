@@ -1,5 +1,5 @@
 QEMU = qemu-system-x86_64
-QEMUFLAGS = -drive format=raw,file=$(OS_FILE),index=0,if=ide, -m 128M -nic user,model=virtio-net-pci,mac=de:ad:be:ef:66:69 
+QEMUFLAGS = -drive format=raw,file=$(OS_FILE),index=0,if=ide, -m 128M -nic user,model=virtio-net-pci,mac=de:ad:be:ef:66:69 -monitor stdio
 
 #-netdev user,id=mynet0 \
 -device virtio-net-pci,netdev=mynet0,mac=de:ad:be:ef:66:69 \
