@@ -83,7 +83,9 @@ static void __kb_handler(regs_t* rs) {
 }
 
 void kb_set_key_handler(void (*key_handler)(unsigned char)) {
-    kb_key_handler = key_handler;
+    if(kb_key_handler == NULL || key_handler == NULL) {
+        kb_key_handler = key_handler;
+    }
 }
 
 void kb_init() {

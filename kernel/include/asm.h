@@ -8,6 +8,10 @@ void sti();
 void io_wait();
 size_t gdt_code_addr();
 uint16_t get_if();
+uint32_t get_cr0();
+void set_cr0(uint32_t value);
+uint32_t get_cr3();
+void set_cr3(uint32_t value);
 
 void outb(uint16_t port, uint8_t data);
 uint8_t inb(uint16_t port);
