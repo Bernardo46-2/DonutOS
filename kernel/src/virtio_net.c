@@ -35,15 +35,6 @@ int virtio_net_init() {
     }
     virtio_net.mac_address = tempq;
 
-    printf("DEVICE_FEATURES = %32b\n", inl(virtio_net.io_address + DEVICE_FEATURES));
-    printf("GUEST_FEATURES  = %32b\n", inl(virtio_net.io_address + GUEST_FEATURES));
-    printf("QUEUE_ADDRESS   = %32b\n", inl(virtio_net.io_address + QUEUE_ADDRESS));
-    printf("QUEUE_SIZE      = %32b\n", inw(virtio_net.io_address + QUEUE_SIZE));
-    printf("QUEUE_SELECT    = %32b\n", inw(virtio_net.io_address + QUEUE_SELECT));
-    printf("QUEUE_NOTIFY    = %32b\n", inw(virtio_net.io_address + QUEUE_NOTIFY));
-    printf("DEVICE_STATUS   = %32b\n", inb(virtio_net.io_address + DEVICE_STATUS));
-    printf("ISR_STATUS      = %32b\n", inb(virtio_net.io_address + ISR_STATUS));
-
 err1: return err;
 err2: return printf("device queue not found\n"), ERR_DEVICE_BAD_CONFIGURATION;
 }
