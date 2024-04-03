@@ -132,7 +132,7 @@ typedef struct {
     uint16_t   device_id;
     pci_bars   bars;
     uint8_t    irq;
-    // virt_queue queue[16];
+    vring      queue[16];
     uint64_t   queue_n;
 } virtio_device;
 
@@ -141,10 +141,26 @@ typedef struct {
     uint16_t   device_id;
     uint32_t   io_address;
     uint8_t    irq;
-    // virt_queue queue[3];
-    uint64_t   queue_n;
+    vring      queue[2];
     uint64_t   mac_address;
 } virtio_net_device;
+
+#define VIRTIO_NET_HDR_F_NEEDS_CSUM 1
+#define VIRTIO_NET_HDR_GSO_NONE 0
+#define VIRTIO_NET_HDR_GSO_TCPV4 1
+#define VIRTIO_NET_HDR_GSO_UDP 3
+#define VIRTIO_NET_HDR_GSO_TCPV6 4
+#define VIRTIO_NET_HDR_GSO_ECN 0x80
+
+struct virtio_net_hdr
+{
+    uint8_t flags;
+    uint8_t gso_type;
+    uint16_t hdr_len;
+    uint16_t gso_size;
+    uint16_t csum_start;
+    uint16_t csum_offset;
+};
 
 int virtio_net_init();
 

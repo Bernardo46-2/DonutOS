@@ -7,6 +7,8 @@
 #include "../../libc/include/malloc.h"
 #include "../../libc/include/time.h"
 
+virtio_net_device vn;
+
 void virtio_init_queues(virtio_device *virtio_pci, uint32_t bar0_address);
 void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_size);
 void negotiate(uint32_t *features);
@@ -24,9 +26,9 @@ int virtio_net_init() {
         .device_id = virtio_device.device_id,
         .io_address = virtio_device.bars.bar[0] & ~0x3,
         .irq = virtio_device.irq,
-        .queue_n = virtio_device.queue_n,
-        .mac_address = 0,
     };
+    virtio_net.queue[0] = virtio_device.queue[0];
+    virtio_net.queue[1] = virtio_device.queue[1];
 
     // Get MAC address
     uint64_t tempq = 0;
@@ -34,6 +36,8 @@ int virtio_net_init() {
         tempq = (tempq << 8) | inb(virtio_net.io_address + 0x14 + i);
     }
     virtio_net.mac_address = tempq;
+
+    vn = virtio_net;
 
 err1: return err;
 err2: return printf("device queue not found\n"), ERR_DEVICE_BAD_CONFIGURATION;
@@ -116,4 +120,14 @@ void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i,
     void* p = (void*)(ALIGN((size_t)calloc(size + 4095, 1)));
     vring_init(vr, queue_size, p, 4096);
     outl(bar0_address + QUEUE_ADDRESS, ((size_t)vr->desc >> 12));
+    vr->avail->flags = 0;
+    virtio->queue[i] = *vr;
+}
+
+void virtio_enable_interrupts(vring* vq){
+    vq->used->flags = 0;
+}
+
+void virtio_disable_interrupts(vring* vq){
+    vq->used->flags = 1;
 }
