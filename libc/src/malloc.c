@@ -4,6 +4,7 @@ const uint32_t HEAP_MAX_SIZE = STACK_ADDRESS - HEAP_ADDRESS;
 uint8_t* const HEAP_PTR = (uint8_t*)HEAP_ADDRESS;
 uint8_t* const STACK_BASE_PTR = (uint8_t*)STACK_ADDRESS;
 
+
 #pragma pack(1)
 typedef struct {
     uint8_t is_free : 1;
@@ -83,9 +84,10 @@ void* malloc(size_t size) {
     return alloc_successful ? (void*)(p+sizeof(AllocHeader)) : NULL;
 }
 
-void* calloc(size_t size, size_t reg_size) {
-    uint8_t* array = (uint8_t*)malloc(size * reg_size);
-    for(size_t i = 0; i < size; i++) array[i] = 0;
+void* calloc(const size_t size, const size_t reg_size) {
+    const size_t bytes = size * reg_size;
+    uint8_t* array = (uint8_t*)malloc(bytes);
+    for(size_t i = 0; i < bytes; i++) array[i] = 0;
     return (void*)array;
 }
 
