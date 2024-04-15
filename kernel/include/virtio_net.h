@@ -1,5 +1,4 @@
-#ifndef _VIRTIO_H_
-#define _VIRTIO_H_
+#pragma once
 
 #include "../../libc/include/types.h"
 #include "../include/pci.h"
@@ -9,7 +8,7 @@ typedef unsigned long long uint64_t;
 
 // Documentation:
 // See: https://ozlabs.org/~rusty/virtio-spec/virtio-0.9.5.pdf
-// See: http://docs.oasis-open.org/virtio/virtio/v1.0/cs04/virtio-v1.0-cs04.html
+// See: https://docs.oasis-open.org/virtio/virtio/v1.3/virtio-v1.3.pdf
 // See: http://www.dumais.io/index.php?article=aca38a9a2b065b24dfa1dee728062a12
 
 #define VIRTIO_VENDOR_ID 0x1AF4
@@ -78,6 +77,8 @@ typedef unsigned long long uint64_t;
 /* This means the buffer contains a list of buffer descriptors. */
 #define VIRTQ_DESC_F_INDIRECT   4
 
+#define NET_PACKET_SIZE 1514
+
 // Buffers[QueueSIze]
 typedef struct {
     uint64_t addr;  // 64-bit address of the buffer on the guest machine.
@@ -115,7 +116,7 @@ typedef struct {
     vring_desc  *desc;
     vring_avail *avail;
     vring_used  *used;
-    vring_desc *desc_next;
+    uint16_t desc_next_idx;
 } vring;
 
 #define ALIGN(x) (((x)+4095) & ~4095)
@@ -171,5 +172,4 @@ struct virtio_net_hdr
 };
 
 int virtio_net_init();
-
-#endif
+void virtio_send_descriptor(virtio_net_device* dev, uint8_t queue_index, vring_desc buffers[], int count);

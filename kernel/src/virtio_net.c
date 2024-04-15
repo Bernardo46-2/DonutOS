@@ -19,7 +19,7 @@ int virtio_net_init() {
     uint8_t *buf;
     virtio_device virtio_device;
     int err = virtio_init(&virtio_device);
-    if (err) goto err1;
+    if (err) return err;
 
     virtio_net_device virtio_net = {
         .vendor_id = virtio_device.vendor_id,
@@ -30,6 +30,7 @@ int virtio_net_init() {
     virtio_net.queue[0] = virtio_device.queue[0];
     virtio_net.queue[1] = virtio_device.queue[1];
 
+
     // Get MAC address
     uint64_t tempq = 0;
     for (int i = 0; i < 6; i++) {
@@ -39,8 +40,18 @@ int virtio_net_init() {
 
     vn = virtio_net;
 
-err1: return err;
-err2: return printf("device queue not found\n"), ERR_DEVICE_BAD_CONFIGURATION;
+    //Alloc RX buffers
+    const int rx_desc_size = 20;
+    vring_desc *rx_desc = (vring_desc*) calloc(rx_desc_size, sizeof(vring_desc));
+    for (int i = 0; i < rx_desc_size; i++) {
+        vring_desc *desc = (vring_desc*)malloc(NET_PACKET_SIZE);
+        rx_desc[i].addr = (uint32_t)desc;
+        desc->len = NET_PACKET_SIZE;
+        desc->flags = VIRTQ_DESC_F_WRITE;
+    }
+    virtio_send_descriptor(&vn, 0, rx_desc, rx_desc_size);
+
+    //return printf("device queue not found\n"), ERR_DEVICE_BAD_CONFIGURATION;
 }
 
 // before = 0111_1001_1011_1111_1000_0000_0110_0100
@@ -138,7 +149,7 @@ void virtio_send_descriptor(virtio_net_device* dev, uint8_t queue_index, vring_d
     // Get the queue
     vring* vq = &dev->queue[queue_index];
 
-    uint16_t desc_index = vq->desc_next;
+    uint16_t desc_index = vq->desc_next_idx;
     uint16_t next_buffer_index;
 
     vring_desc *buf = &vq->desc[desc_index];
@@ -160,7 +171,7 @@ void virtio_send_descriptor(virtio_net_device* dev, uint8_t queue_index, vring_d
         vq->desc[desc_index].addr = buffers[i].addr;
         desc_index = next_buffer_index;
     }
-    vq->desc_next = desc_index;
+    vq->desc_next_idx = desc_index;
 
     vq->avail->idx++;
 
