@@ -131,3 +131,39 @@ void virtio_enable_interrupts(vring* vq){
 void virtio_disable_interrupts(vring* vq){
     vq->used->flags = 1;
 }
+
+void virtio_send_descriptor(virtio_net_device* dev, uint8_t queue_index, vring_desc buffers[], int count)
+{
+
+    // Get the queue
+    vring* vq = &dev->queue[queue_index];
+
+    uint16_t desc_index = vq->desc_next;
+    uint16_t next_buffer_index;
+
+    vring_desc *buf = &vq->desc[desc_index];
+
+    vq->avail->ring[vq->avail->idx % vq->num] = desc_index;
+    for (int i = 0; i < count; i++) {
+
+        next_buffer_index = (desc_index+1) % vq->num;
+
+        vq->desc[desc_index].flags = buffers[i].flags;
+
+        // Set the next flag if there are more buffers
+        if (i != (count-1)) vq->desc[desc_index].flags |= VIRTQ_DESC_F_NEXT;
+
+        vq->desc[desc_index].next = next_buffer_index;
+        vq->desc[desc_index].len = buffers[i].len;
+        
+        
+        vq->desc[desc_index].addr = buffers[i].addr;
+        desc_index = next_buffer_index;
+    }
+    vq->desc_next = desc_index;
+
+    vq->avail->idx++;
+
+    
+    outw(dev->io_address + QUEUE_NOTIFY, queue_index);
+}

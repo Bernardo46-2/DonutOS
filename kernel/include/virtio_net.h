@@ -71,6 +71,13 @@ typedef unsigned long long uint64_t;
 #define SECTOR_COUNT          27
 #define BLOCK_LENGTH          28
 
+/* This marks a buffer as continuing via the next field. */
+#define VIRTQ_DESC_F_NEXT       1
+/* This marks a buffer as write-only (otherwise read-only). */
+#define VIRTQ_DESC_F_WRITE      2
+/* This means the buffer contains a list of buffer descriptors. */
+#define VIRTQ_DESC_F_INDIRECT   4
+
 // Buffers[QueueSIze]
 typedef struct {
     uint64_t addr;  // 64-bit address of the buffer on the guest machine.
@@ -108,6 +115,7 @@ typedef struct {
     vring_desc  *desc;
     vring_avail *avail;
     vring_used  *used;
+    vring_desc *desc_next;
 } vring;
 
 #define ALIGN(x) (((x)+4095) & ~4095)
