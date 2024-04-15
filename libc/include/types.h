@@ -1,5 +1,4 @@
-#ifndef _TYPES_H_
-#define _TYPES_H_
+#pragma once
 
 #define NULL ((void*)0)
 
@@ -13,4 +12,5 @@ typedef unsigned int uint32_t;
 
 typedef unsigned long size_t;
 
-#endif
+typedef enum { false = 0 , true = 1 } __attribute__ ((__packed__)) bool;
+
