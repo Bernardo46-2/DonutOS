@@ -10,7 +10,7 @@
 virtio_net_device vn;
 
 void virtio_init_queues(virtio_device *virtio_pci, uint32_t bar0_address);
-void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_size);
+int virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_size);
 void negotiate(uint32_t *features);
 int virtio_init(virtio_device *virtio);
 int virtio_net_init();
@@ -49,10 +49,10 @@ int virtio_net_init() {
     const int rx_desc_size = 20;
     vring_desc *rx_desc = (vring_desc*) calloc(rx_desc_size, sizeof(vring_desc));
     for (int i = 0; i < rx_desc_size; i++) {
-        vring_desc *desc = (vring_desc*)malloc(NET_PACKET_SIZE);
+        uint8_t *desc = (uint8_t*)malloc(NET_PACKET_SIZE);
         rx_desc[i].addr = (uint32_t)desc;
-        desc->len = NET_PACKET_SIZE;
-        desc->flags = VIRTQ_DESC_F_WRITE;
+        rx_desc[i].len = NET_PACKET_SIZE;
+        rx_desc[i].flags = VIRTQ_DESC_F_WRITE;
     }
     virtio_send_descriptor(&vn, 0, rx_desc, rx_desc_size);
 
@@ -134,14 +134,18 @@ void virtio_init_queues(virtio_device *virtio, uint32_t bar0_address) {
     virtio->queue_n = q_addr;
 }
 
-void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_size) {
+int virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_size) {
     uint32_t size = vring_size(queue_size);
     vring* vr = calloc(sizeof(vring), 1);
     void* p = (void*)(ALIGN((size_t)calloc(size + 4095, 1)));
+    if (p == NULL) return ERR_MEMORY_ALLOCATION_ERROR;
+
     vring_init(vr, queue_size, p, 4096);
     outl(bar0_address + QUEUE_ADDRESS, ((size_t)vr->desc >> 12));
     vr->avail->flags = 0;
     virtio->queue[i] = *vr;
+
+    return 0;
 }
 
 void virtio_enable_interrupts(vring* vq){

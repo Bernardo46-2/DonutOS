@@ -424,9 +424,6 @@ static void __dev_command() {
     vring *rx = &vn.queue[0];
     printf(" Available:\n  flags: %b\n  index: %d\n", rx->avail->flags, rx->avail->idx);
     printf(" Used:\n  flags: %b\n  index: %d\n", rx->used->flags, rx->used->idx);
-    printf(" Descriptors:\n  flags: %b\n  len: %d\n", rx->desc->flags, rx->desc->len);
-
-    
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------- //
