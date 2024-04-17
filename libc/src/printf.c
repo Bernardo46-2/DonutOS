@@ -116,7 +116,37 @@ int printf(const char* fmt, ...) {
                 s += value_len;
                 break;
             case 'f':
-                // just dont use floats ._.
+                {
+                double value = va_arg(ap, double);
+                int int_part = (int)value;
+                double fraction_part = value - int_part;
+
+                itoa(int_part, helper_str, helper_len, 10);
+                value_len = strlen(helper_str);
+                if(leading_len > value_len)
+                    memset(s, leading_char, leading_len - value_len);
+
+                if(leading_len > value_len)
+                    s += leading_len - value_len;
+                strcpy(s, helper_str);
+                s += value_len;
+
+                // Decimal point
+                *s = '.';
+                s++;
+
+                // Convert fraction part to string
+                for(int i = 0; i < 6; i++) {
+                    fraction_part *= 10;
+                    int digit = (int)fraction_part;
+                    helper_str[i] = '0' + digit;
+                    fraction_part -= digit;
+                }
+                helper_str[6] = '\0';
+                value_len = strlen(helper_str);
+                strcpy(s, helper_str);
+                s += value_len;
+                }
                 break;
             case 'c':
                 *s = (char)va_arg(ap, int);
