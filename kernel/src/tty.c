@@ -390,6 +390,10 @@ static void __ram_command() {
     printf("%f %%\n", (float)memory_used*100/TOTAL_MEMORY);
 }
 
+static void __macaddr_command() {
+    printf("%02x:%02x:%02x:%02x\n", vn.mac_address & 0xff, vn.mac_address >> 0x10 & 0xff, vn.mac_address >> 0x20 & 0xff, vn.mac_address >> 0x30 & 0xff);
+}
+
 // ---------------------------------------------------------------------------------------------------------------------------------------- //
 
 // TODO: move the command handler somewhere else
@@ -425,6 +429,7 @@ void tty_prompt() {
             tty_puts("pci   - scan pci bus\n");
             tty_puts("seg   - test segment fault\n");
             tty_puts("ram   - ram usage\n");
+            tty_puts("mac   - mac addr\n");
             tty_puts("\n");
         } else if(strcmp(str, "about") == 0) {
             tty_puts("DonutOS\n");
@@ -438,6 +443,8 @@ void tty_prompt() {
            __color_command(str);
         } else if (strcmp(str, "ram") == 0) {
             __ram_command();
+        } else if (strcmp(str, "mac") == 0){
+            __macaddr_command();
         } else {
             tty_puts("command `");
             tty_puts(str);

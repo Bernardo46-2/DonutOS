@@ -173,3 +173,5 @@ struct virtio_net_hdr
 
 int virtio_net_init();
 void virtio_send_descriptor(virtio_net_device* dev, uint8_t queue_index, vring_desc buffers[], int count);
+
+extern virtio_net_device vn;
