@@ -94,8 +94,8 @@ typedef struct {
 typedef struct {
     uint16_t flags;       // 1: Do not trigger interrupts.
     uint16_t idx;         // Index of the next ring index to be used.  (Last available ring buffer index+1)
-    uint16_t used_event;  // Only used if VIRTIO_F_EVENT_IDX was negotiated
     uint16_t ring[];      // [QueueSize] List of available buffer indexes from the Buffers array above.
+    //uint16_t used_event;  // Only used if VIRTIO_F_EVENT_IDX was negotiated
 } vring_avail;
 
 //  Ring
@@ -108,8 +108,8 @@ typedef struct {
 typedef struct {
     uint16_t flags;         // 1: Do not notify device when buffers are added to available ring.
     uint16_t idx;           // Index of the next ring index to be used.  (Last used ring buffer index+1)
-    uint16_t avail_event;   // Only used if VIRTIO_F_EVENT_IDX was negotiated
     vring_used_elem ring[]; // [QueueSize]
+    //uint16_t avail_event;   // Only used if VIRTIO_F_EVENT_IDX was negotiated
 } vring_used;
 
 typedef struct {

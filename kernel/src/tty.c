@@ -373,22 +373,6 @@ void tty_read(char* dest) {
 
 static void __pci_command() {
     pci_scan_bus();
-    int err = virtio_net_init();
-    if (err) printf("Error %d, while trying to start the network device: ", err);
-    switch (err)
-    {
-    case 0:
-        break;
-    case ERR_DEVICE_BAD_CONFIGURATION:
-        printf("ERR_DEVICE_BAD_CONFIGURATION\n");
-        break;
-    case ERR_CONFIG_NOT_ACCEPTED:
-        printf("ERR_CONFIG_NOT_ACCEPTED\n");
-        break;
-    case ERR_DEVICE_NOT_FOUND:
-        printf("ERR_DEVICE_NOT_FOUND\n");
-        break;
-    }
 }
 
 static void __color_command(char str[TTY_INPUT_SIZE])  {
@@ -407,6 +391,25 @@ static void __ram_command() {
 }
 
 static void __net_device_command() {
+    int err = virtio_net_init();
+    if (err) printf("Error %d, while trying to start the network device: ", err);
+    switch (err)
+    {
+    case 0:
+        break;
+    case ERR_DEVICE_BAD_CONFIGURATION:
+        printf("ERR_DEVICE_BAD_CONFIGURATION\n");
+        break;
+    case ERR_CONFIG_NOT_ACCEPTED:
+        printf("ERR_CONFIG_NOT_ACCEPTED\n");
+        break;
+    case ERR_DEVICE_NOT_FOUND:
+        printf("ERR_DEVICE_NOT_FOUND\n");
+        break;
+    }
+}
+
+static void __dev_command() {
     printf("Device: %d\n IO Address: %x\n IQR: %d\n Vendor: %d\n", vn.device_id, vn.io_address, vn.irq, vn.vendor_id);
 
     printf(" MAC: ");
@@ -416,7 +419,14 @@ static void __net_device_command() {
     }
     printf("\n");
 
+    //RX
+    printf("RX:\n");
+    vring *rx = &vn.queue[0];
+    printf(" Available:\n  flags: %b\n  index: %d\n", rx->avail->flags, rx->avail->idx);
+    printf(" Used:\n  flags: %b\n  index: %d\n", rx->used->flags, rx->used->idx);
+    printf(" Descriptors:\n  flags: %b\n  len: %d\n", rx->desc->flags, rx->desc->len);
 
+    
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------- //
@@ -455,6 +465,7 @@ void tty_prompt() {
             tty_puts("seg   - test segment fault\n");
             tty_puts("ram   - ram usage\n");
             tty_puts("dev   - device status\n");
+            tty_puts("net   - start net device");
             tty_puts("\n");
         } else if(strcmp(str, "about") == 0) {
             tty_puts("DonutOS\n");
@@ -469,6 +480,8 @@ void tty_prompt() {
         } else if (strcmp(str, "ram") == 0) {
             __ram_command();
         } else if (strcmp(str, "dev") == 0){
+            __dev_command();
+        } else if (strcmp(str, "net") == 0){
             __net_device_command();
         } else {
             tty_puts("command `");

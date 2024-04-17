@@ -10,6 +10,9 @@
 #include "../include/timer.h"
 #include "../include/kb.h"
 #include "../include/blue_scr.h"
+#include "../include/pci.h"
+#include "../include/virtio_net.h"
+#include "../include/sys.h"
 
 // LibC
 #include "../../libc/include/malloc.h"
@@ -28,6 +31,24 @@ void init_os() {
     irq_init();
     timer_init();
     kb_init();
+    pci_scan_bus();
+    
+    int err = virtio_net_init();
+    if (err) printf("Error %d, while trying to start the network device: ", err);
+    switch (err)
+    {
+    case 0:
+        break;
+    case ERR_DEVICE_BAD_CONFIGURATION:
+        printf("ERR_DEVICE_BAD_CONFIGURATION\n");
+        break;
+    case ERR_CONFIG_NOT_ACCEPTED:
+        printf("ERR_CONFIG_NOT_ACCEPTED\n");
+        break;
+    case ERR_DEVICE_NOT_FOUND:
+        printf("ERR_DEVICE_NOT_FOUND\n");
+        break;
+    }
 }
 
 void intentional_design() {
