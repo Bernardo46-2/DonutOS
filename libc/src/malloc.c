@@ -1,9 +1,11 @@
 #include "../include/malloc.h"
 
 const uint32_t HEAP_MAX_SIZE = STACK_ADDRESS - HEAP_ADDRESS;
+const size_t TOTAL_MEMORY = HEAP_MAX_SIZE;
 uint8_t* const HEAP_PTR = (uint8_t*)HEAP_ADDRESS;
 uint8_t* const STACK_BASE_PTR = (uint8_t*)STACK_ADDRESS;
 
+size_t memory_used = 0;
 
 #pragma pack(1)
 typedef struct {
@@ -74,12 +76,15 @@ void* malloc(size_t size) {
                     header->size += next_size;
                 }
                 
+                memory_used += header->size;
+
                 alloc_successful = 1;
             } else {
                 p += __alloc_size(p);
             }
         }
     }
+    
     
     return alloc_successful ? (void*)(p+sizeof(AllocHeader)) : NULL;
 }
@@ -94,4 +99,5 @@ void* calloc(const size_t size, const size_t reg_size) {
 void free(void* ptr) {
     AllocHeader* p = (AllocHeader*)ptr;
     (--p)->is_free = 1;
+    memory_used -= p->size;
 }

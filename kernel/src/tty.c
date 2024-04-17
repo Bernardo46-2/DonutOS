@@ -386,6 +386,10 @@ static void __color_command(char str[TTY_INPUT_SIZE])  {
     tty_set_color(color, bg);
 };
 
+static void __ram_command() {
+    printf("%f %%\n", (float)memory_used*100/TOTAL_MEMORY);
+}
+
 // ---------------------------------------------------------------------------------------------------------------------------------------- //
 
 // TODO: move the command handler somewhere else
@@ -420,7 +424,7 @@ void tty_prompt() {
             tty_puts("rand  - print random number\n");
             tty_puts("pci   - scan pci bus\n");
             tty_puts("seg   - test segment fault\n");
-            tty_puts("send  - send a packet\n");
+            tty_puts("ram   - ram usage\n");
             tty_puts("\n");
         } else if(strcmp(str, "about") == 0) {
             tty_puts("DonutOS\n");
@@ -432,25 +436,8 @@ void tty_prompt() {
             __pci_command();
         } else if(strcmp(str, "color") == 0) {
            __color_command(str);
-        } else if (strcmp(str, "send") == 0) {
-            uint8_t* buffer = malloc(100);
-            
-                buffer[0] = 'd';
-                buffer[1] = 'o';
-                buffer[2] = 'n';
-                buffer[3] = 'u';
-                buffer[4] = 't';
-            tty_puts("sending packet\n");
-            // switch (virtio_send_frame(buffer, 100)) {
-            //     case 0:
-            //         tty_puts("packet sent\n");
-            //         break;
-            //     case 1:
-            //         tty_puts("queue full\n");
-            //         break;
-            //     default:
-            //         tty_puts("packet not sent\n");
-            // }
+        } else if (strcmp(str, "ram") == 0) {
+            __ram_command();
         } else {
             tty_puts("command `");
             tty_puts(str);
