@@ -15,6 +15,7 @@ void negotiate(uint32_t *features);
 int virtio_init(virtio_device *virtio);
 int virtio_net_init();
 
+
 int virtio_net_init() {
     uint8_t *buf;
     virtio_device virtio_device;
@@ -30,11 +31,15 @@ int virtio_net_init() {
     virtio_net.queue[0] = virtio_device.queue[0];
     virtio_net.queue[1] = virtio_device.queue[1];
 
+    if (virtio_net.queue[0].desc == 0 || virtio_net.queue[1].desc == 0) {
+        return ERR_DEVICE_BAD_CONFIGURATION;
+    }
+
 
     // Get MAC address
     uint64_t tempq = 0;
     for (int i = 0; i < 6; i++) {
-        tempq = (tempq << 8) | inb(virtio_net.io_address + 0x14 + i);
+        tempq = (tempq << 8) | inb(virtio_net.io_address + DEVICE_CONFIG + i);
     }
     virtio_net.mac_address = tempq;
 
@@ -50,6 +55,8 @@ int virtio_net_init() {
         desc->flags = VIRTQ_DESC_F_WRITE;
     }
     virtio_send_descriptor(&vn, 0, rx_desc, rx_desc_size);
+
+    return 0;
 
     //return printf("device queue not found\n"), ERR_DEVICE_BAD_CONFIGURATION;
 }
@@ -68,7 +75,12 @@ void negotiate(uint32_t *features) {
 int virtio_init(virtio_device *virtio) {
     // 1 Get the pci addresses and reset the device if it's previously configured
     pci_device_t *pci_device;
-    if (!pci_get_device(VIRTIO_VENDOR_ID, VIRTIO_DEVICE_ID, pci_device)) goto err1;
+    
+    //No device found
+    if (!pci_get_device(VIRTIO_VENDOR_ID, VIRTIO_DEVICE_ID, pci_device)) 
+        return ERR_DEVICE_NOT_FOUND;
+
+
     virtio->vendor_id = pci_device->vendor_id;
     virtio->device_id = pci_device->device_id;
     virtio->bars = pci_device->bars;
@@ -93,7 +105,8 @@ int virtio_init(virtio_device *virtio) {
     outb(bar0_address + DEVICE_STATUS, VIRTIO_ACKNOWLEDGE | VIRTIO_DRIVER_LOADED | VIRTIO_FEATURES_OK);
 
     // 6 Re-read device status to ensure the FEATURES_OK bit is still set
-    if ((inb(bar0_address + DEVICE_STATUS) & VIRTIO_FEATURES_OK) == 0) goto err2;
+    if ((inb(bar0_address + DEVICE_STATUS) & VIRTIO_FEATURES_OK) == 0) 
+        return ERR_CONFIG_NOT_ACCEPTED;
 
     // 7 Perform device-specific setup
     virtio_init_queues(virtio, bar0_address);
@@ -102,10 +115,6 @@ int virtio_init(virtio_device *virtio) {
     outb(bar0_address + DEVICE_STATUS, VIRTIO_ACKNOWLEDGE | VIRTIO_DRIVER_LOADED | VIRTIO_FEATURES_OK | VIRTIO_DRIVER_READY);
 
     return 0;
-err1:
-    return printf("device not found\n"), ERR_DEVICE_NOT_FOUND;
-err2:
-    return printf("Features not accepted\n"), ERR_CONFIG_NOT_ACCEPTED;
 }
 
 void virtio_init_queues(virtio_device *virtio, uint32_t bar0_address) {

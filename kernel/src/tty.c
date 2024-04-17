@@ -4,6 +4,7 @@
 #include "../include/donut.h"
 #include "../include/pci.h"
 #include "../include/virtio_net.h"
+#include "../include/sys.h"
 #include "../include/paging.h"
 
 #include "../../libc/include/atoi.h"
@@ -372,7 +373,22 @@ void tty_read(char* dest) {
 
 static void __pci_command() {
     pci_scan_bus();
-    virtio_net_init();
+    int err = virtio_net_init();
+    if (err) printf("Error %d, while trying to start the network device: ", err);
+    switch (err)
+    {
+    case 0:
+        break;
+    case ERR_DEVICE_BAD_CONFIGURATION:
+        printf("ERR_DEVICE_BAD_CONFIGURATION\n");
+        break;
+    case ERR_CONFIG_NOT_ACCEPTED:
+        printf("ERR_CONFIG_NOT_ACCEPTED\n");
+        break;
+    case ERR_DEVICE_NOT_FOUND:
+        printf("ERR_DEVICE_NOT_FOUND\n");
+        break;
+    }
 }
 
 static void __color_command(char str[TTY_INPUT_SIZE])  {
@@ -387,11 +403,20 @@ static void __color_command(char str[TTY_INPUT_SIZE])  {
 };
 
 static void __ram_command() {
-    printf("%f %%\n", (float)memory_used*100/TOTAL_MEMORY);
+    printf("Total = %d, used = %d (%f %%)\n", TOTAL_MEMORY, memory_used, (float)memory_used*100/TOTAL_MEMORY);
 }
 
-static void __macaddr_command() {
-    printf("%02x:%02x:%02x:%02x\n", vn.mac_address & 0xff, vn.mac_address >> 0x10 & 0xff, vn.mac_address >> 0x20 & 0xff, vn.mac_address >> 0x30 & 0xff);
+static void __net_device_command() {
+    printf("Device: %d\n IO Address: %x\n IQR: %d\n Vendor: %d\n", vn.device_id, vn.io_address, vn.irq, vn.vendor_id);
+
+    printf(" MAC: ");
+    for (int i = 5; i >= 0; i--) {
+        printf("%02X", (vn.mac_address >> (i << 3)) & 0xFF);
+        if (i > 0) printf(":");
+    }
+    printf("\n");
+
+
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------- //
@@ -429,7 +454,7 @@ void tty_prompt() {
             tty_puts("pci   - scan pci bus\n");
             tty_puts("seg   - test segment fault\n");
             tty_puts("ram   - ram usage\n");
-            tty_puts("mac   - mac addr\n");
+            tty_puts("dev   - device status\n");
             tty_puts("\n");
         } else if(strcmp(str, "about") == 0) {
             tty_puts("DonutOS\n");
@@ -443,8 +468,8 @@ void tty_prompt() {
            __color_command(str);
         } else if (strcmp(str, "ram") == 0) {
             __ram_command();
-        } else if (strcmp(str, "mac") == 0){
-            __macaddr_command();
+        } else if (strcmp(str, "dev") == 0){
+            __net_device_command();
         } else {
             tty_puts("command `");
             tty_puts(str);

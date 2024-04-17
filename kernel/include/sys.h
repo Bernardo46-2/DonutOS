@@ -1,5 +1,4 @@
-#ifndef _SYS_H_
-#define _SYS_H_
+#pragma once
 
 #include "../../libc/include/types.h"
 
@@ -9,5 +8,3 @@ typedef enum {
     ERR_CONFIG_NOT_ACCEPTED,
     ERR_DEVICE_BAD_CONFIGURATION,
 } err_t;
-
-#endif

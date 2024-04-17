@@ -61,6 +61,7 @@ typedef unsigned long long uint64_t;
 #define QUEUE_NOTIFY    0x10
 #define DEVICE_STATUS   0x12
 #define ISR_STATUS      0x13
+#define DEVICE_CONFIG   0x14
 
 #define TOTAL_SECTOR_COUNT    14
 #define MAXIMUM_SEGMENT_SIZE  1C

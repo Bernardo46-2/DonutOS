@@ -67,8 +67,11 @@ void* malloc(size_t size) {
 
                 header->is_free = 0;
                 header->size = size;
+                memory_used += header->size;
+                
                 
                 if(next_size > sizeof(AllocHeader)) {
+                    //Next header
                     header = (AllocHeader*)(p + size);
                     header->is_free = 1;
                     header->size = next_size;
@@ -76,7 +79,6 @@ void* malloc(size_t size) {
                     header->size += next_size;
                 }
                 
-                memory_used += header->size;
 
                 alloc_successful = 1;
             } else {
