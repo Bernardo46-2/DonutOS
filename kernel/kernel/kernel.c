@@ -33,22 +33,7 @@ void init_os() {
     kb_init();
     pci_scan_bus();
     
-    int err = virtio_net_init();
-    if (err) printf("Error %d, while trying to start the network device: ", err);
-    switch (err)
-    {
-    case 0:
-        break;
-    case ERR_DEVICE_BAD_CONFIGURATION:
-        printf("ERR_DEVICE_BAD_CONFIGURATION\n");
-        break;
-    case ERR_CONFIG_NOT_ACCEPTED:
-        printf("ERR_CONFIG_NOT_ACCEPTED\n");
-        break;
-    case ERR_DEVICE_NOT_FOUND:
-        printf("ERR_DEVICE_NOT_FOUND\n");
-        break;
-    }
+    virtio_net_init();
 }
 
 void intentional_design() {

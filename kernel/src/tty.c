@@ -61,7 +61,6 @@ void tty_init() {
 // --------------------------------------------------------------- Output ----------------------------------------------------------------- //
 
 void tty_scroll(int n) {
-
     size_t gap = n * VGA_WIDTH;
     uint16_t entry = vga_entry(0, tty_color);
 
@@ -387,7 +386,7 @@ static void __color_command(char str[TTY_INPUT_SIZE])  {
 };
 
 static void __ram_command() {
-    printf("Total = %d, used = %d (%f %%)\n", TOTAL_MEMORY, memory_used, (float)memory_used*100/TOTAL_MEMORY);
+    printf("Total = %d, used = %d (%f %%)\n", (int)TOTAL_MEMORY, (int)memory_used, (float)memory_used*100/TOTAL_MEMORY);
 }
 
 static void __net_device_command() {
@@ -445,7 +444,7 @@ void tty_prompt() {
             tty_clear_scr();
             vga_disable_cursor();
             donut();
-            vga_enable_cursor(14, 15);
+            vga_enable_cursor(0, 15);
             tty_clear_scr();
         } else if(strcmp(str, "clear") == 0) {
             tty_clear_scr();
@@ -458,18 +457,20 @@ void tty_prompt() {
             tty_puts("die   - throw an error\n");
             tty_puts("color - set screen color\n");
             tty_puts("rand  - print random number\n");
+            tty_puts("pagin - test paging\n");
             tty_puts("pci   - scan pci bus\n");
-            tty_puts("seg   - test segment fault\n");
             tty_puts("ram   - ram usage\n");
             tty_puts("dev   - device status\n");
             tty_puts("net   - start net device");
-            tty_puts("\n");
+            tty_puts("\n\n");
         } else if(strcmp(str, "about") == 0) {
             tty_puts("DonutOS\n");
         } else if(strcmp(str, "die") == 0) {
             blue_scr(666, "the pumpkins are ready to march on mankind");
         } else if(strcmp(str, "rand") == 0) {
             printf("rand = %d\n", rand());
+        } else if(strcmp(str, "pagin") == 0) {
+            paging_test();
         } else if(strcmp(str, "pci") == 0) {
             __pci_command();
         } else if(strcmp(str, "color") == 0) {
@@ -484,6 +485,7 @@ void tty_prompt() {
             tty_puts("command `");
             tty_puts(str);
             tty_puts("` not found\n");
+            tty_puts("try `help` for more info\n");
         }
     }
 }

@@ -3,13 +3,14 @@
 
 #include "../../libc/include/types.h"
 
-#define PAGES_ADDR     0x00100000
-#define PAGES_END_ADDR 0x00f00000
-#define PAGE_SIZE      0x1000
-#define MAX_PAGES      ((PAGES_END_ADDR - PAGES_ADDR) / PAGE_SIZE)
+#define PAGE_DIR_SIZE       1024
+#define PAGE_DIR_ADDR       0x00100000
+#define PAGE_TABLE_ADDR     (PAGE_DIR_ADDR + 0x1000)
+#define PAGE_TABLE_SIZE     1024
+#define PAGE_SIZE           0x1000 // 4 kb
 
 void paging_init();
-uint8_t* alloc_page(uint8_t user);
-void free_page(size_t paddr);
+void alloc_page();
+void paging_test();
 
 #endif

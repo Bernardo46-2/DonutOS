@@ -1,40 +1,35 @@
 #include "../include/paging.h"
+#include "../include/asm.h"
 
-static uint8_t* const pages_addr = (uint8_t*)PAGES_ADDR;
+#include "../../libc/include/printf.h"
 
-typedef struct {
-    uint8_t free : 1;
-    uint8_t user : 1;
-    size_t paddr : 32;
-} page_frame_t;
+static size_t* const page_directory = (size_t*)PAGE_DIR_ADDR;
 
-static page_frame_t pages[MAX_PAGES] = { 0 };
+static void paging_setup() {
+    for(size_t i = 0; i < PAGE_DIR_SIZE; i++) {
+        page_directory[i] = 0x2; // supervisor, read/write, not present
+    }
+}
 
 void paging_init() {
-    for(size_t i = 0; i < MAX_PAGES; i++) {
-        pages[i] = (page_frame_t) {
-            .free = 1,
-            .user = 0,
-            .paddr = PAGES_ADDR + (i * PAGE_SIZE)
-        };
+    set_cr3((size_t)page_directory);
+    set_cr0(get_cr0() | (1 << 31));
+}
+
+// TODO: write a propper page allocator
+void alloc_page() {
+    size_t* page_table = (size_t*)PAGE_TABLE_ADDR;
+
+    for(size_t i = 0; i < PAGE_TABLE_SIZE; i++) {
+        page_table[i] = (i * 0x1000) | 3;
     }
+    
+    page_directory[0] = ((size_t)page_table) | 3;
 }
 
-uint8_t* alloc_page(uint8_t user) {
-    for(size_t i = 0; i < MAX_PAGES; i++) {
-        if(pages[i].free) {
-            pages[i] = (page_frame_t) {
-                .free = 0,
-                .user = user,
-            };
-            return pages_addr + (i * PAGE_SIZE);
-        }
-    }
-    return NULL;
+void paging_test() {
+    paging_setup();
+    alloc_page();
+    paging_init();
+    printf("We're pagin' babyyy\n");
 }
-
-void free_page(size_t paddr) {
-    size_t index = paddr / PAGE_SIZE;
-    pages[index].free = 1;
-}
-

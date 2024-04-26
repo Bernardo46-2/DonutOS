@@ -32,6 +32,24 @@ int virtio_net_init() {
     virtio_net.queue[1] = virtio_device.queue[1];
 
     if (virtio_net.queue[0].desc == 0 || virtio_net.queue[1].desc == 0) {
+        int err = ERR_DEVICE_BAD_CONFIGURATION;
+        
+        if (err) printf("Error %d, while trying to start the network device: ", err);
+        switch (err)
+        {
+        case 0:
+            break;
+        case ERR_DEVICE_BAD_CONFIGURATION:
+            printf("ERR_DEVICE_BAD_CONFIGURATION\n");
+            break;
+        case ERR_CONFIG_NOT_ACCEPTED:
+            printf("ERR_CONFIG_NOT_ACCEPTED\n");
+            break;
+        case ERR_DEVICE_NOT_FOUND:
+            printf("ERR_DEVICE_NOT_FOUND\n");
+            break;
+        }
+        
         return ERR_DEVICE_BAD_CONFIGURATION;
     }
 

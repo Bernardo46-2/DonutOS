@@ -24,7 +24,7 @@ inline uint32_t get_cr0() {
     return cr0;
 }
 
-inline void set_cr0(uint32_t value) {
+inline void set_cr0(size_t value) {
     __asm__ __volatile__ ( "mov %0, %%cr0" : : "r" (value));
 }
 
@@ -34,7 +34,7 @@ inline uint32_t get_cr3() {
     return cr3;
 }
 
-inline void set_cr3(uint32_t value) {
+inline void set_cr3(size_t value) {
     __asm__ __volatile__ ( "mov %0, %%cr3" : : "r" (value));
 }
 
