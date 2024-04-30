@@ -12,3 +12,8 @@ typedef unsigned int uint32_t;
 
 typedef unsigned long size_t;
 
+
+typedef enum {
+    false = 0,
+    true = 1
+} __attribute__((packed)) bool_t;

@@ -11,7 +11,7 @@
 #include "../include/kb.h"
 #include "../include/blue_scr.h"
 #include "../include/pci.h"
-#include "../include/virtio_net.h"
+#include "../include/rtl8139.h"
 #include "../include/sys.h"
 
 // LibC
@@ -32,8 +32,8 @@ void init_os() {
     timer_init();
     kb_init();
     pci_scan_bus();
-    
-    virtio_net_init();
+
+    rtl8139_init();
 }
 
 void intentional_design() {
@@ -49,7 +49,7 @@ extern void main() {
     srand(timer_get() * kb_last_key());
     intentional_design();
 
-    tty_clear_scr();
+    __tty_clear_scr();
     tty_prompt();
     while(1);
 }

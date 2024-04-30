@@ -11,6 +11,6 @@
 
 void paging_init();
 void alloc_page();
-void paging_test();
+void __paging_test();
 
 #endif

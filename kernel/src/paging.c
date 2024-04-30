@@ -27,7 +27,7 @@ void alloc_page() {
     page_directory[0] = ((size_t)page_table) | 3;
 }
 
-void paging_test() {
+void __paging_test() {
     paging_setup();
     alloc_page();
     paging_init();

@@ -1,11 +1,14 @@
 QEMU = qemu-system-x86_64
-QEMUFLAGS = -drive format=raw,file=$(OS_FILE),index=0,if=ide, -m 128M -nic user,model=virtio-net-pci,mac=de:ad:be:ef:66:69 -monitor stdio
-QEMU_DEBUG_FLAGS = -d int -no-shutdown -no-reboot
+QEMUFLAGS = -drive format=raw,file=$(OS_FILE),index=0,if=ide, -m 128M \
+			-netdev tap,id=mynet0,ifname=tap0,script=no,downscript=no \
+			-device rtl8139,netdev=mynet0,mac=de:ad:be:ef:66:69 \
+			-monitor stdio \
+			-object filter-dump,id=f1,netdev=mynet0,file=build/dump.dat
 
-#-netdev user,id=mynet0 \
--device virtio-net-pci,netdev=mynet0,mac=de:ad:be:ef:66:69 \
--object filter-dump,id=f1,netdev=mynet0,file=$(BUILD_DIR)/net_dump.dat \
-#-nic tap,id=mynet0,ifname=tap0,script=no,downscript=no,model=virtio-net-pci
+# -netdev tap,helper=/usr/lib/qemu/qemu-bridge-helper,id=u1,ifname=tap0,script=no,downscript=no -device e1000,netdev=u1,mac=52:55:00:d1:55:01
+# -netdev tap,helper=/usr/lib/qemu/qemu-bridge-helper,id=u1 -device rtl8139,netdev=u1,id=simpleos_nic,mac=de:ad:be:ef:66:69 \
+  -monitor stdio \
+  -object filter-dump,id=f1,netdev=u1,file=dump.dat
 
 SUB_DIRS = libc boot kernel
 

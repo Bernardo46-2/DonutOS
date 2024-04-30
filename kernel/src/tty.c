@@ -3,7 +3,7 @@
 #include "../include/blue_scr.h"
 #include "../include/donut.h"
 #include "../include/pci.h"
-#include "../include/virtio_net.h"
+#include "../include/rtl8139.h"
 #include "../include/sys.h"
 #include "../include/paging.h"
 
@@ -40,6 +40,23 @@ static size_t history_ptr;
 static int32_t history_fst;
 static int32_t history_lst;
 
+
+
+const struct Command commands[] = {
+            {"help", __help_command, "show this command"},
+            {"about", __about_command, "print system info"},
+            {"clear", __clear_command, "clears the screen"},
+            {"donut", __donut_command, "spin the donut"},
+            {"die", __die_command, "throw an error"},
+            {"color", __color_command, "set screen color"},
+            {"rand", __rand_command, "print random number"},
+            {"pci", __pci_command, "scan pci bus"},
+            {"ram", __ram_command, "ram usage"},
+            {"dev", __dev_command, "device status"},
+            {"net", __net_device_command, "start net device"},
+            {"paging", __paging_test_command, "test paging"},
+};
+
 // ---------------------------------------------------------------------------------------------------------------------------------------- //
 
 void tty_init() {
@@ -55,7 +72,7 @@ void tty_init() {
     history_fst = -1;
     history_lst = -1;
 
-    tty_clear_scr();
+    __tty_clear_scr();
 }
 
 // --------------------------------------------------------------- Output ----------------------------------------------------------------- //
@@ -120,7 +137,7 @@ void tty_putc(const uint16_t c) {
     tty_update_cursor();
 }
 
-void tty_clear_scr() {
+void __tty_clear_scr() {
     uint16_t entry = vga_entry(' ', tty_color);
     
     for(size_t i = 0; i < VGA_SCR_SIZE; i++) {
@@ -370,59 +387,76 @@ void tty_read(char* dest) {
 
 // -------------------------------------------------------------- Command Handler ----------------------------------------------------------- //
 
-static void __pci_command() {
+static int __pci_command(const char* _) {
     pci_scan_bus();
+    return 0;
 }
 
-static void __color_command(char str[TTY_INPUT_SIZE])  {
+static int __color_command(const char* _)  {
     tty_puts("Enter color: ");
-    tty_read(str);
-    int color = atoi(str);
+    char input[TTY_INPUT_SIZE];
+    tty_read(input);
+    int color = atoi(input);
     tty_puts("Background color: ");
-    tty_read(str);
-    int bg = atoi(str);
+    tty_read(input);
+    int bg = atoi(input);
     tty_puts("\n");
     tty_set_color(color, bg);
+    return 0;
 };
 
-static void __ram_command() {
+static int __ram_command(const char* _) {
     printf("Total = %d, used = %d (%f %%)\n", (int)TOTAL_MEMORY, (int)memory_used, (float)memory_used*100/TOTAL_MEMORY);
+    return 0;
 }
 
-static void __net_device_command() {
-    int err = virtio_net_init();
-    if (err) printf("Error %d, while trying to start the network device: ", err);
-    switch (err)
-    {
-    case 0:
-        break;
-    case ERR_DEVICE_BAD_CONFIGURATION:
-        printf("ERR_DEVICE_BAD_CONFIGURATION\n");
-        break;
-    case ERR_CONFIG_NOT_ACCEPTED:
-        printf("ERR_CONFIG_NOT_ACCEPTED\n");
-        break;
-    case ERR_DEVICE_NOT_FOUND:
-        printf("ERR_DEVICE_NOT_FOUND\n");
-        break;
-    }
+static int __net_device_command(const char* _) {
+    rtl8139_init();
+    return 0;
 }
 
-static void __dev_command() {
-    printf("Device: %d\n IO Address: %x\n IQR: %d\n Vendor: %d\n", vn.device_id, vn.io_address, vn.irq, vn.vendor_id);
+static int __dev_command(const char* _) {
+    rtl_print_buffer();
+    return 0;
+}
 
-    printf(" MAC: ");
-    for (int i = 5; i >= 0; i--) {
-        printf("%02X", (vn.mac_address >> (i << 3)) & 0xFF);
-        if (i > 0) printf(":");
+
+static int __help_command(const char* _) {
+    for (int i = 0; i < sizeof(commands)/sizeof(struct Command); i++) {
+        printf("%s - %s\n", commands[i].name, commands[i].description);
     }
-    printf("\n");
+    return 0;
+}
 
-    //RX
-    printf("RX:\n");
-    vring *rx = &vn.queue[0];
-    printf(" Available:\n  flags: %b\n  index: %d\n", rx->avail->flags, rx->avail->idx);
-    printf(" Used:\n  flags: %b\n  index: %d\n", rx->used->flags, rx->used->idx);
+static int __about_command(const char* _) {
+    printf("DonutOS");
+    return 0;
+}
+static int __donut_command(const char* _) {
+    __tty_clear_scr();
+            vga_disable_cursor();
+            donut();
+            vga_enable_cursor(0, 15);
+            __tty_clear_scr();
+            return 0;
+}
+static int __die_command(const char* _) {
+    blue_scr(666, "the pumpkins are ready to march on mankind");
+    return 0;
+}
+static int __rand_command(const char* _) {
+    printf("rand = %d\n", rand());
+    return 0;
+}
+
+static int __clear_command(const char* _) {
+    __tty_clear_scr();
+    return 0;
+}
+
+static int __paging_test_command(const char* _) {
+    __paging_test();
+    return 0;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------- //
@@ -440,52 +474,17 @@ void tty_prompt() {
         
         tty_read(str);
 
-        if(strcmp(str, "donut") == 0) {
-            tty_clear_scr();
-            vga_disable_cursor();
-            donut();
-            vga_enable_cursor(0, 15);
-            tty_clear_scr();
-        } else if(strcmp(str, "clear") == 0) {
-            tty_clear_scr();
-        } else if(strcmp(str, "help") == 0) {
-            tty_puts("\nAvailable Commands:\n");
-            tty_puts("help  - you're here\n");
-            tty_puts("about - print system info\n");
-            tty_puts("clear - clears the screen\n");
-            tty_puts("donut - spin the donut\n");
-            tty_puts("die   - throw an error\n");
-            tty_puts("color - set screen color\n");
-            tty_puts("rand  - print random number\n");
-            tty_puts("pagin - test paging\n");
-            tty_puts("pci   - scan pci bus\n");
-            tty_puts("ram   - ram usage\n");
-            tty_puts("dev   - device status\n");
-            tty_puts("net   - start net device");
-            tty_puts("\n\n");
-        } else if(strcmp(str, "about") == 0) {
-            tty_puts("DonutOS\n");
-        } else if(strcmp(str, "die") == 0) {
-            blue_scr(666, "the pumpkins are ready to march on mankind");
-        } else if(strcmp(str, "rand") == 0) {
-            printf("rand = %d\n", rand());
-        } else if(strcmp(str, "pagin") == 0) {
-            paging_test();
-        } else if(strcmp(str, "pci") == 0) {
-            __pci_command();
-        } else if(strcmp(str, "color") == 0) {
-           __color_command(str);
-        } else if (strcmp(str, "ram") == 0) {
-            __ram_command();
-        } else if (strcmp(str, "dev") == 0){
-            __dev_command();
-        } else if (strcmp(str, "net") == 0){
-            __net_device_command();
-        } else {
-            tty_puts("command `");
-            tty_puts(str);
-            tty_puts("` not found\n");
-            tty_puts("try `help` for more info\n");
+        bool_t found = false;
+
+        for (int i = 0; i < sizeof(commands)/sizeof(struct Command); i++) {
+            if (strcmp(str, (void*)commands[i].name) == 0) {
+                found = true;
+                int err = commands[i].handler(str) != 0;
+                if (err) printf("The command run into an error (%d)\n", err);
+                break;
+            }
         }
+
+        if (!found) printf("Command not found\n");
     }
 }

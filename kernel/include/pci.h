@@ -28,8 +28,6 @@
 #define PCI_BAR_MEM 0x00
 #define PCI_BAR_MEM_PREFETCH 0x08
 
-
-
 typedef struct {
     uint32_t bar[6];
 } pci_bars;
@@ -48,4 +46,9 @@ void pci_scan_bus();
 uint32_t pci_read_bar(uint8_t bar, uint8_t slot, uint8_t func, uint8_t offset);
 int pci_get_device(uint16_t vendor_id, uint16_t device_id, pci_device_t *target);
 void pci_read_bars(pci_device_t pci_device, pci_bars *pci_bars);
+void enable_bus_mastering(pci_device_t device);
+void enable_memory_space(pci_device_t device);
+void enable_io_space(pci_device_t device);
 void pci_device_debug(pci_device_t device);
+void pci_debug_all();
+uint8_t pci_read_irq(pci_device_t device);
