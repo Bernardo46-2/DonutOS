@@ -17,6 +17,7 @@ uint8_t* rx_buffer;
 uint32_t ioaddr;
 uint8_t mac_addr[6];
 uint32_t current_packet_ptr;
+long bytes_received = 0;
 
 void receive_packet() {
     // Convertendo o ponteiro para o local atual do pacote
@@ -24,6 +25,8 @@ void receive_packet() {
 
     // O comprimento do pacote está no segundo uint16_t, pulando o cabeçalho
     uint16_t packet_length = *(t + 1);
+
+    bytes_received += packet_length + 4;
 
     // Avançar para os dados do pacote (além do cabeçalho de 4 bytes)
     t += 2;
@@ -132,4 +135,20 @@ void read_mac_addr() {
     mac_addr[5] = mac_part2 >> 8;
 
     // printf("MAC Address: %01x:%01x:%01x:%01x:%01x:%01x\n", mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+}
+
+rtl_device rtl8139_get_status() {
+    pci_device_t device;
+    pci_get_device(VENDOR_ID, DEVICE_ID, &device);
+
+    rtl_device rtl_dev;
+
+    rtl_dev.vendor_id = device.vendor_id;
+    rtl_dev.device_id = device.device_id;
+    rtl_dev.bars = device.bars;
+    rtl_dev.irq = device.irq;
+    rtl_dev.io_address = get_io_address(device);
+    memcpy(rtl_dev.mac_addr, mac_addr, 6);
+
+    return rtl_dev;
 }

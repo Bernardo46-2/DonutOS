@@ -53,7 +53,7 @@ const struct Command commands[] = {
             {"pci", __pci_command, "scan pci bus"},
             {"ram", __ram_command, "ram usage"},
             {"dev", __dev_command, "device status"},
-            {"net", __net_device_command, "start net device"},
+            {"net", __net_status_command, "net status device"},
             {"paging", __paging_test_command, "test paging"},
 };
 
@@ -410,13 +410,21 @@ static int __ram_command(const char* _) {
     return 0;
 }
 
-static int __net_device_command(const char* _) {
-    rtl8139_init();
+static int __net_status_command(const char* _) {
+    rtl_print_buffer();
     return 0;
 }
 
 static int __dev_command(const char* _) {
-    rtl_print_buffer();
+    //print net device status
+    rtl_device dev = rtl8139_get_status();
+    printf("Vendor ID: %x\n", dev.vendor_id);
+    printf("Device ID: %x\n", dev.device_id);
+    printf("IRQ: %d\n", dev.irq);
+    printf("MAC Address: %02x:%02x:%02x:%02x:%02x:%02x\n", dev.mac_addr[0], dev.mac_addr[1], dev.mac_addr[2], dev.mac_addr[3], dev.mac_addr[4], dev.mac_addr[5]);
+    printf("IO Address: %x\n", dev.io_address);
+    printf("BAR0: %x\n", dev.bars.bar[0]);
+
     return 0;
 }
 

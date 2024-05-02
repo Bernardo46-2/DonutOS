@@ -17,7 +17,7 @@ void tty_prompt();
 static int __pci_command(const char * _);
 static int __color_command(const char* _);
 static int __ram_command(const char* _);
-static int __net_device_command(const char* _);
+static int __net_status_command(const char* _);
 static int __dev_command(const char* _);
 static int __help_command(const char* _);
 static int __about_command(const char* _);
