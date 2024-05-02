@@ -40,8 +40,6 @@ static size_t history_ptr;
 static int32_t history_fst;
 static int32_t history_lst;
 
-
-
 const struct Command commands[] = {
             {"help", __help_command, "show this command"},
             {"about", __about_command, "print system info"},
@@ -53,11 +51,12 @@ const struct Command commands[] = {
             {"pci", __pci_command, "scan pci bus"},
             {"ram", __ram_command, "ram usage"},
             {"dev", __dev_command, "device status"},
+            {"print", __pctprint_command, "packet print"},
             {"net", __net_device_command, "start net device"},
             {"paging", __paging_test_command, "test paging"},
 };
 
-// ---------------------------------------------------------------------------------------------------------------------------------------- //
+// ---------------------------------------  ------------------------------------------------------------------------------------------------- //
 
 void tty_init() {
     // output
@@ -417,6 +416,11 @@ static int __net_device_command(const char* _) {
 
 static int __dev_command(const char* _) {
     rtl_print_buffer();
+    return 0;
+}
+
+static int __pctprint_command(const char* _) {
+    rtl_printFrame();
     return 0;
 }
 
