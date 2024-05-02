@@ -9,7 +9,7 @@
 #define PIC1_COMMAND    PIC1
 #define PIC1_DATA       (PIC1+1)
 #define PIC2_COMMAND    PIC2
-#define PIC2_DATA       (PIC2+2)
+#define PIC2_DATA       (PIC2+1)
 #define PIC_EOI         0x20
 
 // Initialization Command Words
@@ -32,10 +32,6 @@ void pic_send_eoi(uint8_t irq) {
 }
 
 void pic_remap(int offset1, int offset2) {
-    uint16_t a1, a2;
-    a1 = inb(PIC1_DATA);
-    a2 = inb(PIC2_DATA);
-    
     // initial settings
     outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);
     io_wait();
@@ -60,14 +56,16 @@ void pic_remap(int offset1, int offset2) {
     outb(PIC2_DATA, ICW4_8086);
     io_wait();
 
-    outb(PIC1_DATA, a1);
-    outb(PIC2_DATA, a2);
+    outb(PIC1_DATA, 0);
+    io_wait();
+    outb(PIC2_DATA, 0);
+    io_wait();
 }
 
 void pic_init() {
-    pic_remap(0x20, 0x28);
     for(size_t i = 0; i < 16; i++)
         pic_set_mask(i);
+    pic_remap(0x20, 0x28);
     sti();
 }
 
@@ -133,4 +131,3 @@ uint16_t pic_get_isr() {
 uint16_t pic_get_irr() {
     return __pic_get_irq_reg(PIC_READ_IRR);
 }
-

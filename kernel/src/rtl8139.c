@@ -8,6 +8,7 @@
 #include "../../libc/include/malloc.h"
 #include "../../libc/include/net.h"
 
+
 // TODO
 // fazer toda a sessao de `Transmitting Packets`
 
@@ -30,7 +31,7 @@ void receive_packet() {
     uint16_t packet_length = *(t + 1);
 
     // Avançar para os dados do pacote (além do cabeçalho de 4 bytes)
-    t += 2;
+    t += 4;
 
     // Alocação e cópia dos dados do pacote para processamento separado
     void * packet = malloc(packet_length);
@@ -103,8 +104,30 @@ void rtl8139_irq(regs_t* rs) {
 }
 
 void rtl_print_buffer() {
+
+    printf("%d\n %d\n %d\n%d\n",ethHeader.protocol.ipv4Header.transpProtocol.udpHeader.checksum, ethHeader.protocol.ipv4Header.transpProtocol.udpHeader.destPort, ethHeader.protocol.ipv4Header.transpProtocol.udpHeader.length,ethHeader.protocol.ipv4Header.transpProtocol.udpHeader.sourcePort);
     for (int i = 0; i < 256; i++) {
         printf("%02x  ", rx_buffer[i]);
+    }
+    printf("\n");
+}
+
+void printIP(uint8_t* ip, int isIPv6) {
+    int i;
+    if (isIPv6) {
+        for (i = 0; i < 16; i++) {
+            printf("%02x", ip[i]);
+            if (i % 2 != 0 && i < 15) {
+                printf(":");
+            }
+        }
+    } else {
+        for (i = 0; i < 4; i++) {
+            printf("%d", ip[i]);
+            if (i < 3) {
+                printf(".");
+            }
+        }
     }
     printf("\n");
 }
@@ -113,6 +136,43 @@ void rtl_printFrame() {
     //ethernetHeader to be read here.
     // fazer if no EtherType do struct dnv pra descobri qual protocolo é
     // depois, printar o struct do pacote
+    char* protocolName;
+    uint8_t* sourceIP;
+    uint8_t* destIP;
+    uint16_t length;
+
+    // Verificar o tipo de protocolo
+    if (ethHeader.etherType == 0x0800) { // IPv4
+        protocolName = ethHeader.protocol.ipv4Header.protocol == 6 ? "TCP" : "UDP";
+        printf("NETWORK PROTOCOL: iPv4\n");
+        sourceIP = (uint8_t*)&ethHeader.protocol.ipv4Header.sourceIP;
+        destIP = (uint8_t*)&ethHeader.protocol.ipv4Header.destIP;
+        length = ethHeader.protocol.ipv4Header.totalLength;
+    } else if (ethHeader.etherType == 0x86DD) { // IPv6
+        printf("NETWORK PROTOCOL: ipV6\n");
+        protocolName = ethHeader.protocol.ipv6Header.nextHeader == 6 ? "TCP" : "UDP";
+        sourceIP = ethHeader.protocol.ipv6Header.sourceIP; // precisa converter para formato legível
+        destIP = ethHeader.protocol.ipv6Header.destIP; // precisa converter para formato legível
+        length = ethHeader.protocol.ipv6Header.payloadLength;;
+    } else if (ethHeader.etherType == 0x0806){ // ARP
+        printf("NETWORK PROTOCOL: ARP\n");
+        protocolName = "...";
+        sourceIP = ethHeader.protocol.arpHeader.senderMAC;
+        destIP = ethHeader.protocol.arpHeader.targetMAC;
+        length = -1;
+    } else {
+        printf("Unknown protocol\n");
+        return; // Não é um pacote IP ou ARP, então não fazemos nada
+    }
+    
+
+    // Imprimir detalhes do pacote
+    printf("SOURCE: ");
+    printIP(sourceIP, ethHeader.etherType == 0x86DD);
+    printf("DESTINATION: ");
+    printIP(destIP, ethHeader.etherType == 0x86DD);
+    printf("PROTOCOL: %s \nLENGTH: %d\n", protocolName, length);
+    
 }
 
 void rtl_print_buffer_size() {
