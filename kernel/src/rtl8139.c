@@ -20,7 +20,9 @@ uint32_t ioaddr;
 uint8_t mac_addr[6];
 uint32_t current_packet_ptr;
 long bytes_received = 0;
-struct EthernetHeader ethHeader;
+struct EthernetHeader* ethHeaders;
+int firstHeader = 0;
+int nHeaders = 0;
 
 extern struct EthernetHeader process_received_packet(void* packet, uint16_t packet_length);
 
@@ -31,6 +33,15 @@ void parseIPv6Header(const uint8_t *frame, struct IPv6Header *ipv6Header);
 void parseTCPHeader(const uint8_t *frame, struct TCPHeader *tcpHeader);
 void parseUDPHeader(const uint8_t *frame, struct UDPHeader *udpHeader);
 
+int getHeaderIndex(int i) {
+    return (firstHeader + i) % 256;
+}
+
+void removeFirstHeader() {
+    free(&ethHeaders[getHeaderIndex(firstHeader)]);
+    firstHeader = (firstHeader + 1) % 256;
+    nHeaders--;
+}
 
 void receive_packet() {
     // Convertendo o ponteiro para o local atual do pacote
@@ -52,8 +63,11 @@ void receive_packet() {
     //////////////////////////////// AQUI COMECA A PILHA DE PROTOCOLOS ////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // ethernet_handle_packet(packet, packet_length);
-    ethHeader = process_received_packet(frame, frame_length);
-    free(frame);
+    if (nHeaders == 256) {
+        removeFirstHeader();
+    }
+    ethHeaders[getHeaderIndex(nHeaders)] = process_received_packet(frame, frame_length);
+    nHeaders++;
 
     // Atualizando o ponteiro de pacote considerando alinhamento
     current_packet_ptr = ((current_packet_ptr + frame_length + 3) & RX_READ_POINTER_MASK) % RX_BUFFER_SIZE;
@@ -82,6 +96,8 @@ void rtl8139_init() {
     // Init Receive buffer
     rx_buffer = (uint8_t*)malloc(RX_TOTAL_BUFFER_SIZE);
     outl(ioaddr + RBSTART, (size_t)rx_buffer); // send uint32_t memory location to RBSTART (0x30)
+    ethHeaders = (struct EthernetHeader*)malloc(256 * sizeof(struct EthernetHeader));
+
 
     // Set IMR + ISR
     outw(ioaddr + IMR, TOK | ROK); // Habilita IRQs para TOK e ROK apenas
@@ -112,6 +128,7 @@ void rtl8139_irq(regs_t* rs) {
 }
 
 void rtl_print_buffer() {
+    struct EthernetHeader ethHeader = ethHeaders[getHeaderIndex(nHeaders-1)];
 
     printf("%d\n %d\n %d\n%d\n",ethHeader.protocol.ipv4Header.transpProtocol.udpHeader.checksum, ethHeader.protocol.ipv4Header.transpProtocol.udpHeader.destPort, ethHeader.protocol.ipv4Header.transpProtocol.udpHeader.length,ethHeader.protocol.ipv4Header.transpProtocol.udpHeader.sourcePort);
     for (int i = 0; i < 256; i++) {
@@ -217,6 +234,7 @@ void rtl_printFrame() {
     uint8_t* sourceIP;
     uint8_t* destIP;
     uint16_t length;
+    struct EthernetHeader ethHeader = ethHeaders[getHeaderIndex(nHeaders-1)];
 
     printf("ETHERNET HEADER\n");
     printf("SOURCE MAC: ");
