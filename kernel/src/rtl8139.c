@@ -120,12 +120,12 @@ void rtl_print_buffer() {
     printf("\n");
 }
 
-void printIP(uint8_t* ip, int isIPv6) {
+void printIP(uint8_t* ip, bool_t isIPv6) {
     int i;
     if (isIPv6) {
         for (i = 0; i < 16; i++) {
             printf("%02x", ip[i]);
-            if (i % 2 != 0 && i < 15) {
+            if (i % 2 == 1 && i < 15) {
                 printf(":");
             }
         }
@@ -139,6 +139,75 @@ void printIP(uint8_t* ip, int isIPv6) {
     }
     printf("\n");
 }
+
+void printTCP(struct TCPHeader tcpHeader) {
+    printf("SOURCE PORT: %d\n", tcpHeader.sourcePort);
+    printf("DEST PORT: %d\n", tcpHeader.destPort);
+    printf("SEQ: %d\n", tcpHeader.sequenceNumber);
+    printf("ACK: %d\n", tcpHeader.acknowledgmentNumber);
+    printf("DATA OFFSET: %d\n", tcpHeader.dataOffset);
+    printf("FLAGS: %d\n", tcpHeader.flags);
+    printf("WINDOW SIZE: %d\n", tcpHeader.windowSize);
+    printf("CHECKSUM: %d\n", tcpHeader.checksum);
+    printf("URGENT POINTER: %d\n", tcpHeader.urgentPointer);
+}
+
+void printUDP(struct UDPHeader udpHeader) {
+    printf("SOURCE PORT: %d\n", udpHeader.sourcePort);
+    printf("DEST PORT: %d\n", udpHeader.destPort);
+    printf("LENGTH: %d\n", udpHeader.length);
+    printf("CHECKSUM: %d\n", udpHeader.checksum);
+}
+
+void printICMP(struct ICMPHeader icmpHeader) {
+    printf("TYPE: %d\n", icmpHeader.type);
+    printf("CODE: %d\n", icmpHeader.code);
+    printf("CHECKSUM: %d\n", icmpHeader.checksum);
+}
+void printHopOptions(struct IPV6HopByHopHeader hopByHopHeader) {
+    printf("NEXT HEADER: %d\n", hopByHopHeader.nextHeader);
+    printf("HEADER EXT LENGTH: %d\n", hopByHopHeader.headerExtLength);
+    printf("OPTIONS: ");
+    for (int i = 0; i < 6; i++) {
+        printf("%02x", hopByHopHeader.options[i]);
+    }
+    printf("\n");
+    printf("PADDING: ");
+    for (int i = 0; i < 2; i++) {
+        printf("%02x", hopByHopHeader.padding[i]);
+    }
+    printf("\n");
+}
+
+void printIPv6(struct IPv6Header ipv6Header) {
+    printf("VERSION: %d\n", ipv6Header.versionClassFlow >> 28);
+    printf("CLASS: %d\n", (ipv6Header.versionClassFlow >> 20) & 0xFF);
+    printf("FLOW LABEL: %d\n", ipv6Header.versionClassFlow & 0xFFFFF);
+    printf("PAYLOAD LENGTH: %d\n", ipv6Header.payloadLength);
+    printf("NEXT HEADER: %d\n", ipv6Header.nextHeader);
+    printf("HOP LIMIT: %d\n", ipv6Header.hopLimit);
+    printf("SOURCE IP: ");
+    printIP(ipv6Header.sourceIP, 1);
+    printf("DEST IP: ");
+    printIP(ipv6Header.destIP, 1);
+}
+
+void printIPv4(struct IPv4Header ipv4Header) {
+    printf("VERSION: %d\n", ipv4Header.version);
+    printf("HEADER LENGTH: %d\n", ipv4Header.headerLength);
+    printf("TYPE OF SERVICE: %d\n", ipv4Header.typeOfService);
+    printf("TOTAL LENGTH: %d\n", ipv4Header.totalLength);
+    printf("IDENTIFICATION: %d\n", ipv4Header.identification);
+    printf("FLAGS FRAGMENT OFFSET: %d\n", ipv4Header.flagsFragmentOffset);
+    printf("TTL: %d\n", ipv4Header.ttl);
+    printf("PROTOCOL: %d\n", ipv4Header.protocol);
+    printf("HEADER CHECKSUM: %d\n", ipv4Header.headerChecksum);
+    printf("SOURCE IP: ");
+    printIP((uint8_t*)&ipv4Header.sourceIP, 0);
+    printf("DEST IP: ");
+    printIP((uint8_t*)&ipv4Header.destIP, 0);
+}
+
 
 void rtl_printFrame() {
     //ethernetHeader to be read here.
@@ -170,41 +239,68 @@ void rtl_printFrame() {
     // Verificar o tipo de protocolo
     if (ethHeader.etherType == 0x0800) { // IPv4
         printf("IPv4\n");
-        printf("PROTOCOL: %s\n", ethHeader.protocol.ipv4Header.protocol == 6 ? "TCP" : "UDP");
-        printf("SOURCE IP: ");
-        for (int i = 0; i < 4; i++) {
-            printf("%d", ethHeader.protocol.ipv4Header.sourceIP >> (8 * i) & 0xFF);
-            if (i < 3) {
-                printf(".");
-            }
+        printIPv4(ethHeader.protocol.ipv4Header);
+        printf("PROTOCOL: ");
+        switch (ethHeader.protocol.ipv4Header.protocol)
+        {
+        case 0x06:
+            printf("TCP\n");
+            printTCP(ethHeader.protocol.ipv4Header.transpProtocol.tcpHeader);
+            break;
+        case 0x11:
+            printf("UDP\n");
+            printUDP(ethHeader.protocol.ipv4Header.transpProtocol.udpHeader);
+            break;
+        case 0x01:
+            printf("ICMP\n");
+            printICMP(ethHeader.protocol.ipv4Header.transpProtocol.icmpHeader);
+            break;
+        default:
+            printf("Unsuppored protocol\n");
+            break;
         }
-        printf("\nDESTINATION IP: ");
-        for (int i = 0; i < 4; i++) {
-            printf("%d", ethHeader.protocol.ipv4Header.destIP >> (8 * i) & 0xFF);
-            if (i < 3) {
-                printf(".");
-            }
-        }
-        printf("\nLENGTH: %d\n", ethHeader.protocol.ipv4Header.totalLength);
     } else if (ethHeader.etherType == 0x86DD) { // IPv6
         printf("IPv6\n");
+        printIPv6(ethHeader.protocol.ipv6Header);
     
-        printf("PROTOCOL: %s\n", ethHeader.protocol.ipv6Header.nextHeader == 6 ? "TCP" : "UDP");
-        printf("SOURCE IP:      ");
-        for (int i = 0; i < 16; i++) {
-            printf("%02x", ethHeader.protocol.ipv6Header.sourceIP[i]);
-            if (i % 2 != 0 && i < 15) {
-                printf(":");
+        printf("PROTOCOL: ");
+        struct IPv6Header ipv6Header = ethHeader.protocol.ipv6Header;
+        switch (ethHeader.protocol.ipv6Header.nextHeader)
+        {
+        case 0x06:
+            printf("TCP\n");
+            printf("SOURCE PORT: %d\n", ethHeader.protocol.ipv6Header.transpProtocol.tcpHeader.sourcePort);
+            break;
+        case 0x11:
+            printf("UDP\n");
+            printf("SOURCE PORT: %d\n", ethHeader.protocol.ipv6Header.transpProtocol.udpHeader.sourcePort);
+            break;
+
+        case 0:
+            printf("HOPOPT\n");
+            printHopOptions(ipv6Header.transpProtocol.hopByHopHeader);
+            printf("NEXT HEADER: ");
+            switch (ipv6Header.transpProtocol.hopByHopHeader.nextHeader)
+            {
+            case 0x06:
+                printf("TCP\n");
+                printTCP(ipv6Header.transpProtocol.hopByHopHeader.transpProtocol.tcpHeader);
+            case 0x11:
+                printf("UDP\n");
+                printUDP(ipv6Header.transpProtocol.hopByHopHeader.transpProtocol.udpHeader);
+                break;
+            case 0x3A:
+                printf("ICMPv6\n");
+                printICMP(ipv6Header.transpProtocol.hopByHopHeader.transpProtocol.icmpHeader);
             }
+            break;
+        case 0x3A:
+            printf("ICMPv6\n");
+            break;
+        default:
+            printf("Unsuppored protocol\n");
+            break;
         }
-        printf("\nDESTINATION IP: ");
-        for (int i = 0; i < 16; i++) {
-            printf("%02x", ethHeader.protocol.ipv6Header.destIP[i]);
-            if (i % 2 != 0 && i < 15) {
-                printf(":");
-            }
-        }
-        printf("\nLENGTH: %d\n", ethHeader.protocol.ipv6Header.payloadLength);
     } else if (ethHeader.etherType == 0x0806){ // ARP
         printf("ARP\n");
         printf("SENDER MAC: ");
@@ -275,6 +371,27 @@ void read_mac_addr() {
     // printf("MAC Address: %01x:%01x:%01x:%01x:%01x:%01x\n", mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
 }
 
+void parseICMPHeader(const uint8_t *frame, struct ICMPHeader *icmpHeader) {
+    icmpHeader->type = frame[0];
+    icmpHeader->code = frame[1];
+    icmpHeader->checksum = (frame[2] << 8) | frame[3];
+    icmpHeader->restOfHeader = (frame[4] << 24) | (frame[5] << 16) | (frame[6] << 8) | frame[7];
+}
+
+void parseIPv6HopByHop(const uint8_t *frame, struct IPV6HopByHopHeader *ipv6HopByHopHeader) {
+    ipv6HopByHopHeader->nextHeader = frame[0];
+    ipv6HopByHopHeader->headerExtLength = frame[1];
+    memcpy(ipv6HopByHopHeader->options, frame + 2, 6);
+    memcpy(ipv6HopByHopHeader->padding, frame + 8, 2);
+    if (ipv6HopByHopHeader->nextHeader == 0x06) {
+        parseTCPHeader(frame + 8, &ipv6HopByHopHeader->transpProtocol.tcpHeader);
+    } else if (ipv6HopByHopHeader->nextHeader == 0x11) {
+        parseUDPHeader(frame + 8, &ipv6HopByHopHeader->transpProtocol.udpHeader);
+    } else if (ipv6HopByHopHeader->nextHeader == 0x3A) {
+        parseICMPHeader(frame + 8, &ipv6HopByHopHeader->transpProtocol.icmpHeader);
+    }
+}
+
 struct EthernetHeader process_received_packet(void* frame, uint16_t frame_length) {
     // Parse Ethernet header
     struct EthernetHeader ethernetHeader;
@@ -315,6 +432,16 @@ struct EthernetHeader process_received_packet(void* frame, uint16_t frame_length
             // UDP packet
             parseUDPHeader((uint8_t*)frame + 14 + 40, &ethernetHeader.protocol.ipv6Header.transpProtocol.udpHeader);
             // Process UDP packet
+            // ...
+        } else if (ethernetHeader.protocol.ipv6Header.nextHeader == 0x3A) {
+            // ICMPv6 packet
+            parseICMPHeader((uint8_t*)frame + 14 + 40, &ethernetHeader.protocol.ipv6Header.transpProtocol.icmpHeader);
+            // Process ICMPv6 packet
+            // ...
+        } else if (ethernetHeader.protocol.ipv6Header.nextHeader == 0) {
+            // Hop-by-Hop Options header
+            parseIPv6HopByHop((uint8_t*)frame + 14 + 40, &ethernetHeader.protocol.ipv6Header.transpProtocol.hopByHopHeader);
+            // Process Hop-by-Hop Options header
             // ...
         }
         // Process IPv6 packet

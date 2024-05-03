@@ -36,6 +36,12 @@ struct ARPHeader {
     uint32_t targetIP;
 };
 
+struct ICMPHeader {
+    uint8_t type;
+    uint8_t code;
+    uint16_t checksum;
+    uint32_t restOfHeader;
+};
 
 // IPv4 header struct
 struct IPv4Header {
@@ -54,9 +60,25 @@ struct IPv4Header {
     {
         struct TCPHeader tcpHeader;
         struct UDPHeader udpHeader;
+        struct ICMPHeader icmpHeader;
     } transpProtocol;
     
 };
+
+
+struct IPV6HopByHopHeader {
+    uint8_t nextHeader;
+    uint8_t headerExtLength;
+    uint8_t options[6];
+    uint8_t padding[2];
+    union
+    {
+        struct TCPHeader tcpHeader;
+        struct UDPHeader udpHeader;
+        struct ICMPHeader icmpHeader;
+    } transpProtocol;
+};
+
 
 // IPv6 header struct
 struct IPv6Header {
@@ -70,8 +92,11 @@ struct IPv6Header {
     {
         struct TCPHeader tcpHeader;
         struct UDPHeader udpHeader;
+        struct IPV6HopByHopHeader hopByHopHeader;
+        struct ICMPHeader icmpHeader;
     } transpProtocol;
 };
+
 
 // Ethernet header struct
 struct EthernetHeader {

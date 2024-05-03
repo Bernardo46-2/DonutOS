@@ -34,7 +34,7 @@ extern long bytes_received;
 void rtl8139_irq(regs_t* rs);
 uint32_t get_io_address(pci_device_t device);
 void rtl8139_init();
-void printIP(uint8_t* ip, int isIPv6);
+void printIP(uint8_t* ip, bool_t isIPv6);
 void rtl_printFrame();
 void rtl_print_buffer();
 void rtl_print_buffer_size();
