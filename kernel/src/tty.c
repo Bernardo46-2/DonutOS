@@ -7,7 +7,9 @@
 #include "../include/sys.h"
 #include "../include/paging.h"
 
+#include "../../libc/include/net.h"
 #include "../../libc/include/atoi.h"
+#include "../../libc/include/itoa.h"
 #include "../../libc/include/string.h"
 #include "../../libc/include/printf.h"
 #include "../../libc/include/rand.h"
@@ -427,35 +429,110 @@ static int __dev_command(const char* _) {
     return 0;
 }
 
-static int __pctprint_command(const char* _) {
-    char input[TTY_INPUT_SIZE];
-    int index = 0;
-    while (1) {
-        if (nHeaders == 0) {
-            printf("No headers to print\n");
-            return 0;
-        }
-
-        if (index >= nHeaders) {
-            printf("Invalid index\n");
-        }
-
-        printf("Number of headers: %d\n", nHeaders);
-
-        tty_puts("Enter header index: ");
-
-        tty_read(input);
-        index = atoi(input);
-
-        if (index >= nHeaders) {
-            __tty_clear_scr();
-            continue;
-        } else if (index < 0) {
-            return 0;
-        }
-        __tty_clear_scr();
-        rtl_printFrame(index);
+static int __pctprint_command_write_line(int index) {
+    struct EthernetHeader* ethHeader = rtl8139_get_ethHeader(index);
+    if (ethHeader == NULL) {
+        return -1;
     }
+
+    
+
+    switch (ethHeader->etherType) {
+        case 0x0800:
+            printf("IPv4 ");
+            printf("Source IP: ");
+            printIP((uint8_t*)&ethHeader->protocol.ipv4Header.sourceIP, 0);
+            printf("Dest IP: ");
+            printIP((uint8_t*)&ethHeader->protocol.ipv4Header.destIP, 0);
+            break;
+        case 0x0806:
+            printf("ARP ");
+            printf("Source IP: ");
+            printIP((uint8_t*)&ethHeader->protocol.arpHeader.senderIP, 0);
+            printf("Dest IP: ");
+            printIP((uint8_t*)&ethHeader->protocol.arpHeader.targetIP, 0);
+            break;
+        case 0x86DD:
+            printf("IPv6 ");
+            printf("Source IP: ");
+            printIP((uint8_t*)&ethHeader->protocol.ipv6Header.sourceIP, 1);
+            printf("Dest IP: ");
+            printIP((uint8_t*)&ethHeader->protocol.ipv6Header.destIP, 1);
+            break;
+    }
+
+    return 0;
+}
+
+static int __pctprint_command(const char* _) {
+
+    kb_set_key_handler(__tty_read_key); //TODO: write a function to set the key handler
+    vga_disable_cursor();
+
+    int selectedIndex = 0;
+    int lastNHeaders = 0;
+    int lastSelectedIndex = 0;
+
+    while (1) {
+        if (tty_has_key_ready == 0 && lastNHeaders == nHeaders && lastSelectedIndex == selectedIndex) {
+            continue;
+        } 
+        lastNHeaders = nHeaders;
+        lastSelectedIndex = selectedIndex;
+
+        __tty_clear_scr();
+        printf("Number of packets: %d\n", nHeaders);
+        printf("Selected index: %d\n", selectedIndex);
+
+        int viewOffset = selectedIndex - 6;
+        viewOffset = viewOffset < 0 ? 0 : viewOffset;
+
+        for (int i = viewOffset; i < nHeaders && i < viewOffset + 11; i++) {
+            if (i == selectedIndex) {
+                tty_color = vga_color(VGA_COLOR_BLACK, VGA_COLOR_LIGHT_GREY);
+            } else if ( i % 2 == 0) {
+                tty_color = vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+            }else {
+                tty_color = vga_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+            }
+            
+            if (__pctprint_command_write_line(i) == -1) {
+                break;
+            }
+        }
+
+        tty_color = vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+
+
+        switch (tty_last_key)
+        {
+        case KEY_UP:
+            if (selectedIndex > 0) {
+                selectedIndex--;
+            }
+            break;
+        case KEY_DOWN:
+            if (selectedIndex < nHeaders - 1) {
+                selectedIndex++;
+            }
+            break;
+        case '\n':
+            tty_has_key_ready = 0;
+            __tty_clear_scr();
+            rtl_printFrame(selectedIndex);
+            while (tty_has_key_ready == 0);
+            break;
+        }
+
+        tty_has_key_ready = 0;
+        tty_last_key = 0;
+    
+        //delay
+        for (int i = 0; i < 1000000; i++);
+    
+    }
+
+    return 0;
 }
 
 

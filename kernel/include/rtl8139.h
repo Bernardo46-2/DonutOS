@@ -40,7 +40,7 @@ void rtl_print_buffer();
 void rtl_print_buffer_size();
 void read_mac_addr();
 rtl_device rtl8139_get_status();
-int getHeaderIndex(const int i);
+struct EthernetHeader* rtl8139_get_ethHeader(int i);
 
 extern struct EthernetHeader* ethHeaders;
 extern int firstHeader;

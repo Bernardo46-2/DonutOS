@@ -43,6 +43,10 @@ void removeFirstHeader() {
     nHeaders--;
 }
 
+struct EthernetHeader* rtl8139_get_ethHeader(int i) {
+    return &ethHeaders[getHeaderIndex(i)];
+}
+
 void receive_packet() {
     // Convertendo o ponteiro para o local atual do pacote
     uint16_t * t = (uint16_t*)(rx_buffer + current_packet_ptr);
