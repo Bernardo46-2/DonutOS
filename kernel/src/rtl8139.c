@@ -169,7 +169,7 @@ void rtl_printFrame() {
     printf("NETWORK PROTOCOL: ");
     // Verificar o tipo de protocolo
     if (ethHeader.etherType == 0x0800) { // IPv4
-        printf("iPv4\n");
+        printf("IPv4\n");
         printf("PROTOCOL: %s\n", ethHeader.protocol.ipv4Header.protocol == 6 ? "TCP" : "UDP");
         printf("SOURCE IP: ");
         for (int i = 0; i < 4; i++) {
@@ -187,9 +187,10 @@ void rtl_printFrame() {
         }
         printf("\nLENGTH: %d\n", ethHeader.protocol.ipv4Header.totalLength);
     } else if (ethHeader.etherType == 0x86DD) { // IPv6
-        printf("ipV6\n");
+        printf("IPv6\n");
+    
         printf("PROTOCOL: %s\n", ethHeader.protocol.ipv6Header.nextHeader == 6 ? "TCP" : "UDP");
-        printf("SOURCE IP: ");
+        printf("SOURCE IP:      ");
         for (int i = 0; i < 16; i++) {
             printf("%02x", ethHeader.protocol.ipv6Header.sourceIP[i]);
             if (i % 2 != 0 && i < 15) {
@@ -285,18 +286,18 @@ struct EthernetHeader process_received_packet(void* frame, uint16_t frame_length
         // ARP packet
     
 
-        parseARPHeader((uint8_t*)frame + 4, &ethernetHeader.protocol.arpHeader);
+        parseARPHeader((uint8_t*)frame + 14, &ethernetHeader.protocol.arpHeader);
     } else if (ethernetHeader.etherType == 0x0800) {
         // IPv4 packet
-        parseIPv4Header((uint8_t*)frame + 4, &ethernetHeader.protocol.ipv4Header);
+        parseIPv4Header((uint8_t*)frame + 14, &ethernetHeader.protocol.ipv4Header);
         if (ethernetHeader.protocol.ipv4Header.protocol == 0x06) {
             // TCP packet
-            parseTCPHeader((uint8_t*)frame + 4 + 20, &ethernetHeader.protocol.ipv4Header.transpProtocol.tcpHeader);
+            parseTCPHeader((uint8_t*)frame + 14 + 20, &ethernetHeader.protocol.ipv4Header.transpProtocol.tcpHeader);
             // Process TCP packet
             // ...
         } else if (ethernetHeader.protocol.ipv4Header.protocol == 0x11) {
             // UDP packet
-            parseUDPHeader((uint8_t*)frame + 4 + 20, &ethernetHeader.protocol.ipv4Header.transpProtocol.udpHeader);
+            parseUDPHeader((uint8_t*)frame + 14 + 20, &ethernetHeader.protocol.ipv4Header.transpProtocol.udpHeader);
             // Process UDP packet
             // ...
         }
@@ -304,15 +305,15 @@ struct EthernetHeader process_received_packet(void* frame, uint16_t frame_length
         // ...
     } else if (ethernetHeader.etherType == 0x86DD) {
         // IPv6 packet
-        parseIPv6Header((uint8_t*)frame + 4, &ethernetHeader.protocol.ipv6Header);
+        parseIPv6Header((uint8_t*)frame + 14, &ethernetHeader.protocol.ipv6Header);
         if (ethernetHeader.protocol.ipv6Header.nextHeader == 0x06) {
             // TCP packet
-            parseTCPHeader((uint8_t*)frame + 4 + 40, &ethernetHeader.protocol.ipv6Header.transpProtocol.tcpHeader);
+            parseTCPHeader((uint8_t*)frame + 14 + 40, &ethernetHeader.protocol.ipv6Header.transpProtocol.tcpHeader);
             // Process TCP packet
             // ...
         } else if (ethernetHeader.protocol.ipv6Header.nextHeader == 0x11) {
             // UDP packet
-            parseUDPHeader((uint8_t*)frame + 4 + 40, &ethernetHeader.protocol.ipv6Header.transpProtocol.udpHeader);
+            parseUDPHeader((uint8_t*)frame + 14 + 40, &ethernetHeader.protocol.ipv6Header.transpProtocol.udpHeader);
             // Process UDP packet
             // ...
         }
@@ -364,11 +365,11 @@ void parseIPv4Header(const uint8_t *frame, struct IPv4Header *ipv4Header) {
 // IPv6 header parsing function
 void parseIPv6Header(const uint8_t *frame, struct IPv6Header *ipv6Header) {
     memcpy(&ipv6Header->versionClassFlow, frame, 4);
-    ipv6Header->payloadLength = (frame[4] << 8) | frame[5];
+    memcpy(&ipv6Header->payloadLength, frame + 4, 2);
     ipv6Header->nextHeader = frame[6];
     ipv6Header->hopLimit = frame[7];
-    memcpy(ipv6Header->sourceIP, frame + 8, 16);
-    memcpy(ipv6Header->destIP, frame + 24, 16);
+    memcpy(&ipv6Header->sourceIP, frame + 8, 16);
+    memcpy(&ipv6Header->destIP, frame + 24, 16);
 }
 
 // TCP header parsing function

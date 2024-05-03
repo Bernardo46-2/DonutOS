@@ -5,7 +5,7 @@ ifdef CROSS_COMPILER
 	CFLAGS = -ffreestanding -Iinclude -m32 -g
 else
 	CC = gcc
-	CFLAGS = -ffreestanding -Iinclude -m32 -g -march=i386 -fno-pie -fno-stack-protector -O2
+	CFLAGS = -ffreestanding -Iinclude -m32 -g -march=i386 -fno-pie -fno-stack-protector -Os
 endif
 
 LD = ld
