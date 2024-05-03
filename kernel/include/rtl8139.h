@@ -35,11 +35,18 @@ void rtl8139_irq(regs_t* rs);
 uint32_t get_io_address(pci_device_t device);
 void rtl8139_init();
 void printIP(uint8_t* ip, bool_t isIPv6);
-void rtl_printFrame();
+void rtl_printFrame(int i);
 void rtl_print_buffer();
 void rtl_print_buffer_size();
 void read_mac_addr();
 rtl_device rtl8139_get_status();
+int getHeaderIndex(const int i);
+
+extern struct EthernetHeader* ethHeaders;
+extern int firstHeader;
+extern int nHeaders;
+
+
 
 
 #endif

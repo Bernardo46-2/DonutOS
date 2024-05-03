@@ -428,8 +428,34 @@ static int __dev_command(const char* _) {
 }
 
 static int __pctprint_command(const char* _) {
-    rtl_printFrame();
-    return 0;
+    char input[TTY_INPUT_SIZE];
+    int index = 0;
+    while (1) {
+        if (nHeaders == 0) {
+            printf("No headers to print\n");
+            return 0;
+        }
+
+        if (index >= nHeaders) {
+            printf("Invalid index\n");
+        }
+
+        printf("Number of headers: %d\n", nHeaders);
+
+        tty_puts("Enter header index: ");
+
+        tty_read(input);
+        index = atoi(input);
+
+        if (index >= nHeaders) {
+            __tty_clear_scr();
+            continue;
+        } else if (index < 0) {
+            return 0;
+        }
+        __tty_clear_scr();
+        rtl_printFrame(index);
+    }
 }
 
 

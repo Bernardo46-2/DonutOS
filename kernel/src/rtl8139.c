@@ -33,7 +33,7 @@ void parseIPv6Header(const uint8_t *frame, struct IPv6Header *ipv6Header);
 void parseTCPHeader(const uint8_t *frame, struct TCPHeader *tcpHeader);
 void parseUDPHeader(const uint8_t *frame, struct UDPHeader *udpHeader);
 
-int getHeaderIndex(int i) {
+int getHeaderIndex(const int i) {
     return (firstHeader + i) % 256;
 }
 
@@ -226,7 +226,7 @@ void printIPv4(struct IPv4Header ipv4Header) {
 }
 
 
-void rtl_printFrame() {
+void rtl_printFrame(int i) {
     //ethernetHeader to be read here.
     // fazer if no EtherType do struct dnv pra descobri qual protocolo é
     // depois, printar o struct do pacote
@@ -234,7 +234,7 @@ void rtl_printFrame() {
     uint8_t* sourceIP;
     uint8_t* destIP;
     uint16_t length;
-    struct EthernetHeader ethHeader = ethHeaders[getHeaderIndex(nHeaders-1)];
+    struct EthernetHeader ethHeader = ethHeaders[i];
 
     printf("ETHERNET HEADER\n");
     printf("SOURCE MAC: ");
