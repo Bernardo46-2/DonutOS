@@ -23,32 +23,37 @@ struct EthernetHeader ethHeader;
 
 extern struct EthernetHeader process_received_packet(void* packet, uint16_t packet_length);
 
+void parseEthernetHeader(const uint8_t *frame, struct EthernetHeader *ethernetHeader);
+void parseARPHeader(const uint8_t *frame, struct ARPHeader *arpHeader);
+void parseIPv4Header(const uint8_t *frame, struct IPv4Header *ipv4Header);
+void parseIPv6Header(const uint8_t *frame, struct IPv6Header *ipv6Header);
+void parseTCPHeader(const uint8_t *frame, struct TCPHeader *tcpHeader);
+void parseUDPHeader(const uint8_t *frame, struct UDPHeader *udpHeader);
+
+
 void receive_packet() {
     // Convertendo o ponteiro para o local atual do pacote
     uint16_t * t = (uint16_t*)(rx_buffer + current_packet_ptr);
 
     // O comprimento do pacote está no segundo uint16_t, pulando o cabeçalho
-    uint16_t packet_length = *(t + 1);
+    uint16_t frame_length = *(t + 1) + 4;
 
     // Avançar para os dados do pacote (além do cabeçalho de 4 bytes)
-    t += 4;
+
 
     // Alocação e cópia dos dados do pacote para processamento separado
-    void * packet = malloc(packet_length);
-    memcpy(packet, t, packet_length);
+    void * frame = malloc(frame_length);
+    memcpy(frame, t+2, frame_length);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////// AQUI COMECA A PILHA DE PROTOCOLOS ////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // ethernet_handle_packet(packet, packet_length);
-    ethHeader = process_received_packet(packet, packet_length);
-    free(packet);
+    ethHeader = process_received_packet(frame, frame_length);
+    free(frame);
 
     // Atualizando o ponteiro de pacote considerando alinhamento
-    current_packet_ptr = (current_packet_ptr + packet_length + 4 + 3) & RX_READ_POINTER_MASK;
-
-    if(current_packet_ptr > RX_BUFFER_SIZE)
-        current_packet_ptr -= RX_BUFFER_SIZE;
+    current_packet_ptr = ((current_packet_ptr + frame_length + 3) & RX_READ_POINTER_MASK) % RX_BUFFER_SIZE;
 
     // Atualizar o CAPR para informar ao hardware que o pacote foi processado
     outw(ioaddr + CAPR, current_packet_ptr - 0x10);
@@ -141,37 +146,98 @@ void rtl_printFrame() {
     uint8_t* destIP;
     uint16_t length;
 
+    printf("ETHERNET HEADER\n");
+    printf("SOURCE MAC: ");
+    for (int i = 0; i < 6; i++) {
+        printf("%02x", ethHeader.sourceMAC[i]);
+        if (i < 5) {
+            printf(":");
+        }
+    }
+    printf("\nDESTINATION MAC: ");
+    for (int i = 0; i < 6; i++) {
+        printf("%02x", ethHeader.destMAC[i]);
+        if (i < 5) {
+            printf(":");
+        }
+    }
+    printf("\n\n");
+
+    printf("NETWORK PROTOCOL: ");
     // Verificar o tipo de protocolo
     if (ethHeader.etherType == 0x0800) { // IPv4
-        protocolName = ethHeader.protocol.ipv4Header.protocol == 6 ? "TCP" : "UDP";
-        printf("NETWORK PROTOCOL: iPv4\n");
-        sourceIP = (uint8_t*)&ethHeader.protocol.ipv4Header.sourceIP;
-        destIP = (uint8_t*)&ethHeader.protocol.ipv4Header.destIP;
-        length = ethHeader.protocol.ipv4Header.totalLength;
+        printf("iPv4\n");
+        printf("PROTOCOL: %s\n", ethHeader.protocol.ipv4Header.protocol == 6 ? "TCP" : "UDP");
+        printf("SOURCE IP: ");
+        for (int i = 0; i < 4; i++) {
+            printf("%d", ethHeader.protocol.ipv4Header.sourceIP >> (8 * i) & 0xFF);
+            if (i < 3) {
+                printf(".");
+            }
+        }
+        printf("\nDESTINATION IP: ");
+        for (int i = 0; i < 4; i++) {
+            printf("%d", ethHeader.protocol.ipv4Header.destIP >> (8 * i) & 0xFF);
+            if (i < 3) {
+                printf(".");
+            }
+        }
+        printf("\nLENGTH: %d\n", ethHeader.protocol.ipv4Header.totalLength);
     } else if (ethHeader.etherType == 0x86DD) { // IPv6
-        printf("NETWORK PROTOCOL: ipV6\n");
-        protocolName = ethHeader.protocol.ipv6Header.nextHeader == 6 ? "TCP" : "UDP";
-        sourceIP = ethHeader.protocol.ipv6Header.sourceIP; // precisa converter para formato legível
-        destIP = ethHeader.protocol.ipv6Header.destIP; // precisa converter para formato legível
-        length = ethHeader.protocol.ipv6Header.payloadLength;;
+        printf("ipV6\n");
+        printf("PROTOCOL: %s\n", ethHeader.protocol.ipv6Header.nextHeader == 6 ? "TCP" : "UDP");
+        printf("SOURCE IP: ");
+        for (int i = 0; i < 16; i++) {
+            printf("%02x", ethHeader.protocol.ipv6Header.sourceIP[i]);
+            if (i % 2 != 0 && i < 15) {
+                printf(":");
+            }
+        }
+        printf("\nDESTINATION IP: ");
+        for (int i = 0; i < 16; i++) {
+            printf("%02x", ethHeader.protocol.ipv6Header.destIP[i]);
+            if (i % 2 != 0 && i < 15) {
+                printf(":");
+            }
+        }
+        printf("\nLENGTH: %d\n", ethHeader.protocol.ipv6Header.payloadLength);
     } else if (ethHeader.etherType == 0x0806){ // ARP
-        printf("NETWORK PROTOCOL: ARP\n");
-        protocolName = "...";
-        sourceIP = ethHeader.protocol.arpHeader.senderMAC;
-        destIP = ethHeader.protocol.arpHeader.targetMAC;
-        length = -1;
+        printf("ARP\n");
+        printf("SENDER MAC: ");
+        for (int i = 0; i < 6; i++) {
+            printf("%02x", ethHeader.protocol.arpHeader.senderMAC[i]);
+            if (i < 5) {
+                printf(":");
+            }
+        }
+        printf("\nSENDER IP: ");
+        for (int i = 0; i < 4; i++) {
+            printf("%d", ethHeader.protocol.arpHeader.senderIP >> (8 * i) & 0xFF);
+            if (i < 3) {
+                printf(".");
+            }
+        }
+        printf("\nTARGET MAC: ");
+        for (int i = 0; i < 6; i++) {
+            printf("%02x", ethHeader.protocol.arpHeader.targetMAC[i]);
+            if (i < 5) {
+                printf(":");
+            }
+        }
+        printf("\nTARGET IP: ");
+        for (int i = 0; i < 4; i++) {
+            printf("%d", ethHeader.protocol.arpHeader.targetIP >> (8 * i) & 0xFF);
+            if (i < 3) {
+                printf(".");
+            }
+        }
+        printf("\n");
+        printf("PROTOCOL: %s\n", ethHeader.protocol.arpHeader.opcode == 1 ? "REQUEST" : "REPLY");
     } else {
         printf("Unknown protocol\n");
         return; // Não é um pacote IP ou ARP, então não fazemos nada
     }
-    
 
-    // Imprimir detalhes do pacote
-    printf("SOURCE: ");
-    printIP(sourceIP, ethHeader.etherType == 0x86DD);
-    printf("DESTINATION: ");
-    printIP(destIP, ethHeader.etherType == 0x86DD);
-    printf("PROTOCOL: %s \nLENGTH: %d\n", protocolName, length);
     
 }
 
@@ -205,28 +271,29 @@ void read_mac_addr() {
     // printf("MAC Address: %01x:%01x:%01x:%01x:%01x:%01x\n", mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
 }
 
-struct EthernetHeader process_received_packet(void* packet, uint16_t packet_length) {
+struct EthernetHeader process_received_packet(void* frame, uint16_t frame_length) {
     // Parse Ethernet header
     struct EthernetHeader ethernetHeader;
-    parseEthernetHeader((uint8_t*)packet, &ethernetHeader);
+    parseEthernetHeader((uint8_t*)frame, &ethernetHeader);
+  
 
     // Check the EtherType to determine the protocol
     if (ethernetHeader.etherType == 0x0806) {
         // ARP packet
-        parseARPHeader((uint8_t*)packet + sizeof(struct EthernetHeader), &ethernetHeader.protocol.arpHeader);
-        // Process ARP packet
-        // ...
+    
+
+        parseARPHeader((uint8_t*)frame + 4, &ethernetHeader.protocol.arpHeader);
     } else if (ethernetHeader.etherType == 0x0800) {
         // IPv4 packet
-        parseIPv4Header((uint8_t*)packet + sizeof(struct EthernetHeader), &ethernetHeader.protocol.ipv4Header);
+        parseIPv4Header((uint8_t*)frame + 4, &ethernetHeader.protocol.ipv4Header);
         if (ethernetHeader.protocol.ipv4Header.protocol == 0x06) {
             // TCP packet
-            parseTCPHeader((uint8_t*)packet + sizeof(struct EthernetHeader) + sizeof(ethernetHeader.protocol.ipv4Header), &ethernetHeader.protocol.ipv4Header.transpProtocol.tcpHeader);
+            parseTCPHeader((uint8_t*)frame + 4 + 20, &ethernetHeader.protocol.ipv4Header.transpProtocol.tcpHeader);
             // Process TCP packet
             // ...
         } else if (ethernetHeader.protocol.ipv4Header.protocol == 0x11) {
             // UDP packet
-            parseUDPHeader((uint8_t*)packet + sizeof(struct EthernetHeader) + sizeof(ethernetHeader.protocol.ipv4Header), &ethernetHeader.protocol.ipv4Header.transpProtocol.udpHeader);
+            parseUDPHeader((uint8_t*)frame + 4 + 20, &ethernetHeader.protocol.ipv4Header.transpProtocol.udpHeader);
             // Process UDP packet
             // ...
         }
@@ -234,15 +301,15 @@ struct EthernetHeader process_received_packet(void* packet, uint16_t packet_leng
         // ...
     } else if (ethernetHeader.etherType == 0x86DD) {
         // IPv6 packet
-        parseIPv6Header((uint8_t*)packet + sizeof(struct EthernetHeader), &ethernetHeader.protocol.ipv6Header);
+        parseIPv6Header((uint8_t*)frame + 4, &ethernetHeader.protocol.ipv6Header);
         if (ethernetHeader.protocol.ipv6Header.nextHeader == 0x06) {
             // TCP packet
-            parseTCPHeader((uint8_t*)packet + sizeof(struct EthernetHeader) + sizeof(ethernetHeader.protocol.ipv6Header), &ethernetHeader.protocol.ipv6Header.transpProtocol.tcpHeader);
+            parseTCPHeader((uint8_t*)frame + 4 + 40, &ethernetHeader.protocol.ipv6Header.transpProtocol.tcpHeader);
             // Process TCP packet
             // ...
         } else if (ethernetHeader.protocol.ipv6Header.nextHeader == 0x11) {
             // UDP packet
-            parseUDPHeader((uint8_t*)packet + sizeof(struct EthernetHeader) + sizeof(ethernetHeader.protocol.ipv6Header), &ethernetHeader.protocol.ipv6Header.transpProtocol.udpHeader);
+            parseUDPHeader((uint8_t*)frame + 4 + 40, &ethernetHeader.protocol.ipv6Header.transpProtocol.udpHeader);
             // Process UDP packet
             // ...
         }
@@ -270,9 +337,9 @@ void parseARPHeader(const uint8_t *frame, struct ARPHeader *arpHeader) {
     arpHeader->hardwareAddrLen = frame[4];
     arpHeader->protocolAddrLen = frame[5];
     memcpy(&arpHeader->opcode, frame + 6, 2);
-    memcpy(arpHeader->senderMAC, frame + 8, 6);
+    memcpy(&arpHeader->senderMAC, frame + 8, 6);
     memcpy(&arpHeader->senderIP, frame + 14, 4);
-    memcpy(arpHeader->targetMAC, frame + 18, 6);
+    memcpy(&arpHeader->targetMAC, frame + 18, 6);
     memcpy(&arpHeader->targetIP, frame + 24, 4);
 }
 

@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-void* memcpy(void* dest, void* src, size_t size);
+void* memcpy(void* dest, const void* src, size_t size);
 void* memset(void* ptr, uint8_t c, size_t n);
 size_t strlen(const char* const str);
 void strrev(void* str);
