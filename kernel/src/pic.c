@@ -10,6 +10,7 @@
 #define PIC1_DATA       (PIC1+1)
 #define PIC2_COMMAND    PIC2
 #define PIC2_DATA       (PIC2+1)
+#define PIC2_DATA       (PIC2+1)
 #define PIC_EOI         0x20
 
 // Initialization Command Words
@@ -60,11 +61,16 @@ void pic_remap(int offset1, int offset2) {
     io_wait();
     outb(PIC2_DATA, 0);
     io_wait();
+    outb(PIC1_DATA, 0);
+    io_wait();
+    outb(PIC2_DATA, 0);
+    io_wait();
 }
 
 void pic_init() {
     for(size_t i = 0; i < 16; i++)
         pic_set_mask(i);
+    pic_remap(0x20, 0x28);
     pic_remap(0x20, 0x28);
     sti();
 }
