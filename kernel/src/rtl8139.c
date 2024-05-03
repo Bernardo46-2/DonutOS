@@ -314,6 +314,7 @@ void rtl_printFrame(int i) {
             break;
         case 0x3A:
             printf("ICMPv6\n");
+            printICMP(ipv6Header.transpProtocol.icmpHeader);
             break;
         default:
             printf("Unsuppored protocol\n");
