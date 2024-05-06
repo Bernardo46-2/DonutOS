@@ -1,18 +1,39 @@
 #include "../include/string.h"
 
 void* memcpy(void* dest, const void* src, size_t size) {
-    uint8_t* s = (uint8_t*)src;
-    uint8_t* d = (uint8_t*)dest;
+    size_t i;
 
-    while(size--) 
-        *d++ = *s++;
+    // Copy a word at a time
+    for(i = 0; i < size / sizeof(size_t); i++) {
+        ((size_t*)dest)[i] = ((size_t*)src)[i];
+    }
+
+    // Copy the remaining bytes
+    for(i = i * sizeof(size_t); i < size; i++) {
+        ((uint8_t*)dest)[i] = ((uint8_t*)src)[i];
+    }
     
     return dest;
 }
 
 void* memset(void* ptr, uint8_t c, size_t n) {
-    uint8_t* p = (uint8_t*)ptr;
-    while(n--) *p++ = c;
+    size_t c_arch = 0, i;
+
+    // Create a word-sized value of c
+    for (i = 0; i < sizeof(size_t); i++) {
+        c_arch |= ((size_t)c) << (i * 8);
+    }
+
+    // Set memory in word-sized chunks
+    for (i = 0; i < n / sizeof(size_t); i ++) {
+        ((size_t*)ptr)[i] = c_arch;
+    }
+
+    // Set the remaining bytes
+    for (i  *= sizeof(size_t); i < n; i++) {
+        ((uint8_t*)ptr)[i] = c;
+    }
+
     return ptr;
 }
 
@@ -27,10 +48,10 @@ void strrev(void* str) {
     const size_t len = strlen(str);
     char tmp;
 
-    for(size_t i = 0, j = len-1; i < j; i++, j--) {
+    for(size_t i = 0; i < len / 2; i++) {
         tmp = s[i];
-        s[i] = s[j];
-        s[j] = tmp;
+        s[i] = s[len - i - 1];
+        s[len - i - 1] = tmp;
     }
 }
 
@@ -57,14 +78,34 @@ void* memmove(void* dest, void* src, size_t n) {
 
     if(s == d || n == 0)
         return dest;
-    else if(d > s && d - s < n)
-        for(size_t i = n-1; i >= 0; i--)
-            d[i] = s[i];
-    else if(d < s && s - d < n)
-        for(size_t i = 0; i < n; i++)
-            d[i] = s[i];
-    else
+    else if(d > s && d - s < n) {
+        // Move data word by word in reverse order
+        size_t num_words = n / sizeof(size_t);
+        size_t num_bytes = n % sizeof(size_t);
+        for(size_t i = num_words; i > 0; i--) {
+            ((size_t*)d)[i-1] = ((size_t*)s)[i-1];
+        }
+        // Move the remaining bytes
+        for(size_t i = 0; i < num_bytes; i++) {
+            d[num_words * sizeof(size_t) + i] = s[num_words * sizeof(size_t) + i];
+        }
+    }
+    else if(d < s && s - d < n) {
+        // Move data word by word in forward order
+        size_t num_words = n / sizeof(size_t);
+        size_t num_bytes = n % sizeof(size_t);
+        for(size_t i = 0; i < num_words; i++) {
+            ((size_t*)d)[i] = ((size_t*)s)[i];
+        }
+        // Move the remaining bytes
+        for(size_t i = 0; i < num_bytes; i++) {
+            d[num_words * sizeof(size_t) + i] = s[num_words * sizeof(size_t) + i];
+        }
+    }
+    else {
+        // Move data using memcpy
         memcpy(dest, src, n);
+    }
     
     return dest;
 }
