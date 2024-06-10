@@ -141,7 +141,7 @@ void rtl_print_buffer() {
     printf("\n");
 }
 
-void printIP(uint8_t* ip, bool_t isIPv6) {
+void printIP(uint8_t* ip, uint8_t isIPv6) {
     int i;
     if (isIPv6) {
         for (i = 0; i < 16; i++) {

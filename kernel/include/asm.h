@@ -7,7 +7,7 @@ void cli();
 void sti();
 void io_wait();
 size_t gdt_code_addr();
-uint16_t get_if();
+uint16_t get_flags();
 uint32_t get_cr0();
 void set_cr0(size_t value);
 uint32_t get_cr3();

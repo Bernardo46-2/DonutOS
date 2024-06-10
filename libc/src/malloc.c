@@ -1,5 +1,7 @@
 #include "../include/malloc.h"
 
+// well, here's a malloc implementation, Alexandre. Rest in peace dude
+
 const uint32_t HEAP_MAX_SIZE = STACK_ADDRESS - HEAP_ADDRESS;
 const size_t TOTAL_MEMORY = HEAP_MAX_SIZE;
 uint8_t* const HEAP_PTR = (uint8_t*)HEAP_ADDRESS;

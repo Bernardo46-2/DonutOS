@@ -589,11 +589,11 @@ void tty_prompt() {
         
         tty_read(str);
 
-        bool_t found = false;
+        uint8_t found = 0;
 
         for (int i = 0; i < sizeof(commands)/sizeof(struct Command); i++) {
             if (strcmp(str, (void*)commands[i].name) == 0) {
-                found = true;
+                found = 1;
                 int err = commands[i].handler(str) != 0;
                 if (err) printf("The command run into an error (%d)\n", err);
                 break;
