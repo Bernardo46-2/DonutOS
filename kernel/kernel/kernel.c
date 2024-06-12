@@ -32,7 +32,6 @@ void init_os() {
     timer_init();
     kb_init();
     pci_scan_bus();
-
     rtl8139_init();
 }
 

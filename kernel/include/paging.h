@@ -5,7 +5,7 @@
 
 #define PAGE_DIR_SIZE       1024
 #define PAGE_TABLE_SIZE     1024
-#define PAGE_DIR_ADDR       0x00100000
+#define PAGE_DIR_ADDR       0x00200000
 #define PAGE_TABLE_ADDR     (PAGE_DIR_ADDR + 0x1000)
 #define PAGE_SIZE           0x1000 // 4 kb
 #define PAGE_TABLES_COUNT   (TOTAL_MEMORY_SIZE / (PAGE_SIZE * PAGE_TABLE_SIZE))

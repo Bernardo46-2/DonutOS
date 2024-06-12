@@ -27,7 +27,7 @@ static void paging_setup() {
         page_directory[i] = 0x2; // supervisor, read/write, not present
     }
     
-    // mapping out the 128 mb of ram the os uses
+    // mapping out all the 128 mb of ram the os uses
     for(size_t table_index = 0; table_index < PAGE_TABLES_COUNT; table_index++) {
         size_t* page_table = (size_t*)(PAGE_TABLE_ADDR + table_index * PAGE_SIZE);
         
@@ -53,7 +53,8 @@ void paging_init() {
 }
 
 void* alloc_page() {
-    for(size_t i = (USER_PAGES_ADDR / PAGE_SIZE); i < TOTAL_PAGES; i++) {
+    static const size_t init_idx = (USER_PAGES_ADDR / PAGE_SIZE);
+    for(size_t i = init_idx; i < TOTAL_PAGES; i++) {
         if(__is_page_free(i)) {
             __alloc_page(i);
             return (void*)(i << 12);
@@ -69,12 +70,11 @@ void free_page(void* page) {
 
 void __paging_test() {
     paging_setup();
-    alloc_page();
-    alloc_page();
-    alloc_page();
-    alloc_page();
     paging_init();
-    printf("We're pagin' babyyy\n\n");
+    void* a = alloc_page();
+    void* b = alloc_page();
+    void* c = alloc_page();
+    void* d = alloc_page();
 
     #ifdef PAGING_DEBUG
     printf("User pages allocated:\n");

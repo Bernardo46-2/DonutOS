@@ -87,6 +87,8 @@ gdt_start:                               ; needs to be after real mode code
         db 0b11001111                    ; other flags and limit
         db 0
 
+    gdt_tss:
+
 gdt_end:
     
 gdt_descriptor:

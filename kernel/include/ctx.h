@@ -6,11 +6,13 @@
 
 #define NUM_PROCESSES 2
 
-typedef struct {
+typedef struct tcb_s {
     size_t pid;
     uint8_t used : 1;
     uint8_t locked : 1;
-    regs_t regs;
-} ctx_t;
+    
+    size_t esp;
+    struct tcb_s* next;
+} tcb_t;
 
 #endif

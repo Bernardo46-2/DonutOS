@@ -3,7 +3,9 @@
 #include "../include/asm.h"
 
 #include "../../libc/include/printf.h"
-#include "../../libc/include/malloc.h"
+
+// URGENT:
+// need to setup a TSS inside the GDT
 
 // each context should have its own stack
 // keep an extra stack segment for kernel (probably the same stack currently being used)
@@ -18,12 +20,16 @@
 // if a context is storing packages to a buffer, treat that as a critical section
 // do not switch to a different context then
 
-static ctx_t process_list[NUM_PROCESSES] = { 0 };
 static size_t curr_pid = 0;
 static uint8_t can_switch = 1;
+static size_t next_pid = 0;
+static tcb_t* curr_proc = NULL;
 
 #define CRITICAL_SECTION_START (can_switch = 0)
 #define CRITICAL_SECTION_END   (can_switch = 1)
+
+// in switch_to_task.s
+extern void switch_to_task(tcb_t* tcb);
 
 static void process_a() {
     int x = 0;
@@ -46,17 +52,6 @@ static void process_b() {
 }
 
 int spawn_process(size_t pid, void (*function)()) {
-    if(process_list[pid].used == 1) return 1;
-
-    uint8_t* page = alloc_page();
-    
-    process_list[pid] = (ctx_t) {
-        .pid = pid,
-        .used = 1,
-        .locked = 0,
-        // .regs = FIGURE THIS OUT;
-    };
-    
     return 0;
 }
 

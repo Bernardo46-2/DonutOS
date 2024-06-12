@@ -80,8 +80,6 @@ void receive_packet() {
     outw(ioaddr + CAPR, current_packet_ptr - 0x10);
 }
 
-
-
 void rtl8139_init() {
     pci_device_t dev;
     pci_get_device(VENDOR_ID, DEVICE_ID, &dev);
