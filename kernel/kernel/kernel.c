@@ -13,6 +13,7 @@
 #include "../include/pci.h"
 #include "../include/rtl8139.h"
 #include "../include/sys.h"
+#include "../include/paging.h"
 
 // LibC
 #include "../../libc/include/malloc.h"
@@ -33,6 +34,8 @@ void init_os() {
     kb_init();
     pci_scan_bus();
     rtl8139_init();
+
+    paging_init();
 }
 
 void intentional_design() {

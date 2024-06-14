@@ -57,6 +57,7 @@ N_SECTORS:
 
 CODE_SEG: equ gdt_code - gdt_start
 DATA_SEG: equ gdt_data - gdt_start
+; TSS_SEG: equ gdt_tss - gdt_start
 
 gdt_setup:
     cli
@@ -83,17 +84,66 @@ gdt_start:                               ; needs to be after real mode code
         dw 0xffff                        ; 16 bits of the limit
         dw 0
         db 0
-        db 0b10010010                    ; presence, privilege, type and typeflags
+        db 0b10010010                    ; presence, privilege, type and type flags
         db 0b11001111                    ; other flags and limit
         db 0
 
-    gdt_tss:
+    ; gdt_tss:
+    ;     dw tss_end - tss_start - 1       ; limit
+    ;     dw tss_start                     ; base low 16 bits
+    ;     db equ tss_start >> 16           ; base next 8 bits
+    ;     db 0b10001001                    ; presence, privilege, type and type flags
+    ;     db 0                             ; flags and limit's high 4 bits
+    ;     db equ tss_start >> 24           ; base high 8 bits
+        
 
 gdt_end:
     
 gdt_descriptor:
     dw gdt_end - gdt_start - 1           ; size of the gdt
     dd gdt_start                         ; start of the gdt
+
+; ---------------------------------------------------------------------------------------------------------------------------------
+
+; tss_start:
+;     dd 0                  ; Previous TSS (not used)
+;     dd 0                  ; ESP0
+;     dw 0                  ; SS0
+;     dw 0
+;     dd 0                  ; ESP1
+;     dw 0                  ; SS1
+;     dw 0
+;     dd 0                  ; ESP2
+;     dw 0                  ; SS2
+;     dw 0
+;     dd 0                  ; CR3
+;     dd 0                  ; EIP
+;     dd 0                  ; EFLAGS
+;     dd 0                  ; EAX
+;     dd 0                  ; ECX
+;     dd 0                  ; EDX
+;     dd 0                  ; EBX
+;     dd 0                  ; ESP
+;     dd 0                  ; EBP
+;     dd 0                  ; ESI
+;     dd 0                  ; EDI
+;     dw 0
+;     dw 0
+;     dw 0
+;     dw 0
+;     dw 0
+;     dw 0
+;     dw 0
+;     dw 0
+;     dw 0
+;     dw 0
+;     dd 0                  ; LDT
+;     dw 0                  ; Trap
+;     dw 0                  ; IO Map Base
+; tss_end:
+; 
+; ; TSS Segment Selector (GDT index << 3)
+; TSS_SEL equ TSS_SEG << 3
 
 ; ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -107,6 +157,9 @@ start_protected_mode:
     mov gs, ax                           ; setting gs (extra extra extra data segment reg) to 0
     mov ebp, 0x7ffff                     ; setting the base of the stack to 0x80000
     mov esp, ebp                         ; emptying the stack
+
+    ; mov ax, TSS_SEL
+    ; ltr ax
 
     mov dword [0x7ff0], gdt_code         ; saving constant at specific address for reading from kernel later
     

@@ -6,6 +6,7 @@
 #include "../include/rtl8139.h"
 #include "../include/sys.h"
 #include "../include/paging.h"
+#include "../include/ctx.h"
 
 #include "../../libc/include/net.h"
 #include "../../libc/include/atoi.h"
@@ -56,6 +57,7 @@ const struct Command commands[] = {
             {"print", __pctprint_command, "packet print"},
             {"net", __net_status_command, "start net device"},
             {"paging", __paging_test_command, "test paging"},
+            {"process", __process_test_command, "test process"},
 };
 
 // ---------------------------------------  ------------------------------------------------------------------------------------------------- //
@@ -571,6 +573,11 @@ static int __clear_command(const char* _) {
 
 static int __paging_test_command(const char* _) {
     __paging_test();
+    return 0;
+}
+
+static int __process_test_command(const char* _) {
+    __process_test();
     return 0;
 }
 

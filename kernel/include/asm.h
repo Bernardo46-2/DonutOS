@@ -8,10 +8,17 @@ void sti();
 void io_wait();
 size_t gdt_code_addr();
 uint16_t get_flags();
+uint32_t get_gs();
+uint32_t get_fs();
+uint32_t get_es();
+uint32_t get_ds();
+uint32_t get_cs();
+uint32_t get_ss();
 uint32_t get_cr0();
 void set_cr0(size_t value);
 uint32_t get_cr3();
 void set_cr3(size_t value);
+void set_esp(size_t value);
 
 void outb(uint16_t port, uint8_t data);
 uint8_t inb(uint16_t port);

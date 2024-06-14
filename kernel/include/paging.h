@@ -17,7 +17,9 @@
 
 void paging_init();
 void* alloc_page();
+void* alloc_pages(size_t n);
 void free_page(void* page);
+void free_pages(void* page, size_t n);
 void __paging_test();
 
 #endif
