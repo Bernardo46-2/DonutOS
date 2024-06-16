@@ -90,16 +90,16 @@ void tty_scroll(int n) {
         gap = 0;
     }
 
-    // CRITICAL_SECTION_START
     if(n >= 0) {
+        CRITICAL_SECTION_START;
         for(size_t i = 0; i < VGA_SCR_SIZE - gap; i++) {
             tty_buffer[i] = vga_entry(tty_buffer[i + gap] & 0xFF, tty_color);
         }
         for(size_t i = VGA_SCR_SIZE - gap; i < VGA_SCR_SIZE; i++) {
             tty_buffer[i] = entry;
         }
+        CRITICAL_SECTION_END;
     }
-    // CRITICAL_SECTION_END
 
     tty_ptr -= gap;
 }
@@ -120,7 +120,7 @@ void tty_update_cursor() {
 static void __tty_write_char(const uint16_t c) {
     uint16_t entry;
 
-    // CRITICAL_SECTION_START
+    CRITICAL_SECTION_START;
     switch(c) {
     case '\n':
         tty_ptr += VGA_WIDTH - TTY_COL;
@@ -136,7 +136,7 @@ static void __tty_write_char(const uint16_t c) {
         tty_buffer[tty_ptr++] = entry;
         break;
     }
-    // CRITICAL_SECTION_END
+    CRITICAL_SECTION_END;
 }
 
 void tty_putc(const uint16_t c) {
@@ -382,7 +382,9 @@ void tty_read(char* dest) {
 
     while(tty_input_len < TTY_INPUT_SIZE && !tty_stop_read) {
         if(tty_has_key_ready) {
+            CRITICAL_SECTION_START;
             __tty_handle_key();
+            CRITICAL_SECTION_END;
         }
     }
 

@@ -1,8 +1,9 @@
 #ifndef _CTX_H_
 #define _CTX_H_
 
-#include "../../libc/include/types.h"
 #include "../include/isr.h"
+
+#include "../../libc/include/types.h"
 
 #define CRITICAL_SECTION_START (can_switch = 0)
 #define CRITICAL_SECTION_END   (can_switch = 1)
@@ -16,8 +17,7 @@ typedef struct tcb_s {
     size_t n_pages;
     void* fst_page;
     
-    struct tcb_s* prev;
-    struct tcb_s* next;
+    volatile struct tcb_s* next;
     regs_t regs;
 } tcb_t;
 #pragma pack()

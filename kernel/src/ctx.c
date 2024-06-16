@@ -8,16 +8,15 @@
 #include "../../libc/include/string.h"
 
 // #define CTX_DEBUG
-
-#define QUANTUM 1000
+#define QUANTUM 100
 
 static volatile size_t next_pid = 0;
+static volatile uint8_t scheduler_on = 0;
 volatile uint8_t can_switch = 0;
-volatile uint8_t first_switch = 1;
 
-tcb_t* fst_proc = NULL;
-tcb_t* lst_proc = NULL;
-tcb_t* curr_proc = NULL;
+volatile tcb_t* fst_proc = NULL;
+volatile tcb_t* lst_proc = NULL;
+volatile tcb_t* curr_proc = NULL;
 
 static void print_regs(size_t pid, regs_t* rs) {
     printf("pid: %d {\n", pid);
@@ -69,7 +68,7 @@ int spawn_process(regs_t* rs, void (*fn)(), size_t n_pages) {
     void* p = alloc_pages(n_pages);
     if(p == NULL) return 1;
     
-    const size_t stack_size = sizeof(regs_t)+4;
+    const size_t stack_size = sizeof(regs_t);
     size_t* esp = (size_t*)p + (PAGE_SIZE * n_pages) - stack_size;
     tcb_t* new_proc = (tcb_t*)malloc(sizeof(tcb_t));
 
@@ -109,21 +108,9 @@ int spawn_process(regs_t* rs, void (*fn)(), size_t n_pages) {
         },
     };
 
-    if(fst_proc == NULL) {
-        fst_proc = new_proc;
-        lst_proc = new_proc;
-        curr_proc = new_proc;
-
-        curr_proc->next = curr_proc;
-        curr_proc->prev = curr_proc;
-    } else {
-        new_proc->prev = lst_proc;
-        lst_proc->next = new_proc;
-        lst_proc = new_proc;
-        
-        new_proc->next = fst_proc;
-        fst_proc->prev = new_proc;
-    }
+    lst_proc->next = new_proc;
+    lst_proc = new_proc;
+    new_proc->next = fst_proc;
     
     return 0;
 }
@@ -133,14 +120,9 @@ static void switch_ctx(regs_t* rs) {
     print_regs(curr_proc->pid, rs);
 #endif
     
-    // curr_proc->regs = *rs;
-    if(!first_switch) {
-        first_switch = 0;
-        memcpy(&curr_proc->regs, rs, sizeof(regs_t));
-    }
+    curr_proc->regs = *rs;
     curr_proc = curr_proc->next;
-    // *rs = curr_proc->regs;
-    memcpy(rs, &curr_proc->regs, sizeof(regs_t));
+    *rs = curr_proc->regs;
     
 #ifdef CTX_DEBUG
     print_regs(curr_proc->pid, rs);
@@ -151,25 +133,45 @@ void scheduler(regs_t* rs) {
     static size_t last_ticks = 0;
     size_t now = timer_get();
 
-    if(now > last_ticks + QUANTUM) {
+    if(scheduler_on && now > last_ticks + QUANTUM) {
         last_ticks = now;
 
-        // TODO: handle dead processes
         if(can_switch && curr_proc->next != curr_proc) {
+            while(curr_proc->next->dead) {
+                tcb_t* tmp = curr_proc->next;
+                free_pages(tmp->fst_page, tmp->n_pages);
+                curr_proc->next = tmp->next;
+                free(tmp);
+            }
             switch_ctx(rs);
         }
     }
 }
 
+int spawn_kernel_process(regs_t* rs) {
+    curr_proc = (tcb_t*)malloc(sizeof(tcb_t));
+    if(curr_proc == NULL) return 1;
+    
+    fst_proc = curr_proc;
+    lst_proc = curr_proc;
+
+    *curr_proc = (tcb_t) {
+        .pid = next_pid++,
+        .fst_page = NULL,
+        .next = curr_proc,
+        .regs = *rs,
+    };
+
+    return 0;
+}
+
 void __spawn_dummy_processes(regs_t *rs) {
+    uint8_t k = spawn_kernel_process(rs);
     uint8_t x = spawn_process(rs, process_x, 4);
     uint8_t y = spawn_process(rs, process_y, 4);
-    printf("%s\n", x || y ? "some error occured" : "dummy processes spawned");
+    printf("%s\n", k || x || y ? "some error occured" : "dummy processes spawned");
 
 #ifdef CTX_DEBUG
-    printf("kernel regs:\n");
-    print_regs(0, rs);
-    
     tcb_t* ptr = NULL;
     for(ptr = fst_proc; ptr != lst_proc; ptr = ptr->next) {
         print_regs(ptr->pid, &ptr->regs);
@@ -189,8 +191,8 @@ void __proc_kb_debug(regs_t* rs, unsigned char key) {
     }
 }
 
-// TODO: create kernel process
 void __process_test() {
-    curr_proc = lst_proc;
+    curr_proc = fst_proc;
+    scheduler_on = 1;
     can_switch = 1;
 }

@@ -41,8 +41,4 @@ Just open the project's root folder and
 Good luck!
 
 ## TO DO
-- Paging
 - Process scheduling
-- Syscalls
-- Network protocol stack
-- Network sniffer
