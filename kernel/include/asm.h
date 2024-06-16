@@ -7,7 +7,7 @@ void cli();
 void sti();
 void io_wait();
 size_t gdt_code_addr();
-uint16_t get_flags();
+uint32_t get_flags();
 uint32_t get_gs();
 uint32_t get_fs();
 uint32_t get_es();

@@ -84,20 +84,22 @@ void tty_scroll(int n) {
     size_t gap = n * VGA_WIDTH;
     uint16_t entry = vga_entry(0, tty_color);
 
-    if (gap > VGA_SCR_SIZE) {
+    if(gap > VGA_SCR_SIZE) {
         gap = VGA_SCR_SIZE;
-    } else if (gap < 0) {
+    } else if(gap < 0) {
         gap = 0;
     }
 
-    if ( n >= 0) {
-        for (size_t i = 0; i < VGA_SCR_SIZE - gap; i++) {
+    // CRITICAL_SECTION_START
+    if(n >= 0) {
+        for(size_t i = 0; i < VGA_SCR_SIZE - gap; i++) {
             tty_buffer[i] = vga_entry(tty_buffer[i + gap] & 0xFF, tty_color);
         }
-        for (size_t i = VGA_SCR_SIZE - gap; i < VGA_SCR_SIZE; i++) {
+        for(size_t i = VGA_SCR_SIZE - gap; i < VGA_SCR_SIZE; i++) {
             tty_buffer[i] = entry;
         }
     }
+    // CRITICAL_SECTION_END
 
     tty_ptr -= gap;
 }
@@ -108,7 +110,7 @@ inline void tty_set_color(const enum vga_color fg, const enum vga_color bg) {
 }
 
 void tty_update_cursor() {
-    if (tty_ptr >= VGA_SCR_SIZE) {
+    if(tty_ptr >= VGA_SCR_SIZE) {
        tty_scroll(TTY_ROW - VGA_HEIGHT + 1);
     }
 
@@ -118,6 +120,7 @@ void tty_update_cursor() {
 static void __tty_write_char(const uint16_t c) {
     uint16_t entry;
 
+    // CRITICAL_SECTION_START
     switch(c) {
     case '\n':
         tty_ptr += VGA_WIDTH - TTY_COL;
@@ -133,6 +136,7 @@ static void __tty_write_char(const uint16_t c) {
         tty_buffer[tty_ptr++] = entry;
         break;
     }
+    // CRITICAL_SECTION_END
 }
 
 void tty_putc(const uint16_t c) {
@@ -272,7 +276,7 @@ static void __history_prev_buf() {
     }
 }
 
-uint16_t tty_get_color() {
+inline uint16_t tty_get_color() {
     return tty_color;
 }
 
@@ -436,8 +440,6 @@ static int __pctprint_command_write_line(int index) {
     if (ethHeader == NULL) {
         return -1;
     }
-
-    
 
     switch (ethHeader->etherType) {
         case 0x0800:

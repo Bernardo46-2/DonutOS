@@ -12,8 +12,8 @@ inline void io_wait() {
     outb(0x80, 0);
 }
 
-inline uint16_t get_flags() {
-    uint16_t flags;
+inline uint32_t get_flags() {
+    uint32_t flags;
     __asm__ __volatile__ ("pushf\n\t" "pop %0" : "=g"(flags) );
     return flags;
 }

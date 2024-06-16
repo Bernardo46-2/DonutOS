@@ -2,6 +2,7 @@
 #include "../include/asm.h"
 #include "../include/isr.h"
 #include "../include/irq.h"
+#include "../include/ctx.h"
 
 #define IS_PRESS(x)      (x < 0x80)
 #define IS_RELEASE(x)    (x > 0x80)
@@ -54,31 +55,36 @@ static void __kb_handler(regs_t* rs) {
     __last_key = key;
 
     switch(key) {
-    case KEY_LSHIFT:
-    case KEY_RSHIFT:
-        mods.shift = !is_release;
-        break;
-    case KEY_NUM_LOCK:
-        mods.num_lock = is_release ? !mods.num_lock : mods.num_lock;
-        break;
-    case KEY_CAPS_LOCK:
-        mods.caps_lock = is_release ? !mods.caps_lock : mods.caps_lock;
-        break;
-    case KEY_SCROLL_LOCK:
-        mods.scroll_lock = is_release ? !mods.scroll_lock : mods.scroll_lock;
-        break;
-    case KEY_LCTRL:
-        mods.ctrl = !is_release;
-        break;
-    case KEY_LALT:
-        mods.alt = !is_release;
-        break;
-    default:
-        if(kb_key_handler && !is_release) {
-            uint8_t i = (mods.caps_lock ^ mods.shift) & 0x1;
-            kb_key_handler(kb_layout_us[i][key]);
-        }
-        break;
+        case KEY_LSHIFT:
+            mods.shift = !is_release;
+            break;
+        case KEY_NUM_LOCK:
+            mods.num_lock = is_release ? !mods.num_lock : mods.num_lock;
+            break;
+        case KEY_CAPS_LOCK:
+            mods.caps_lock = is_release ? !mods.caps_lock : mods.caps_lock;
+            break;
+        case KEY_SCROLL_LOCK:
+            mods.scroll_lock = is_release ? !mods.scroll_lock : mods.scroll_lock;
+            break;
+        case KEY_LCTRL:
+            mods.ctrl = !is_release;
+            break;
+        case KEY_LALT:
+            mods.alt = !is_release;
+            break;
+        case KEY_RSHIFT:
+            if(is_release) {
+                uint8_t i = (mods.caps_lock ^ mods.shift) & 0x1;
+                __proc_kb_debug(rs, kb_layout_us[i][key]);
+            }
+            break;
+        default:
+            if(kb_key_handler && !is_release) {
+                uint8_t i = (mods.caps_lock ^ mods.shift) & 0x1;
+                kb_key_handler(kb_layout_us[i][key]);
+            }
+            break;
     }
 }
 

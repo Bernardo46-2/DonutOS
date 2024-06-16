@@ -1,9 +1,13 @@
 #include "../include/paging.h"
 #include "../include/asm.h"
 
+#define PAGING_DEBUG
+
+#ifdef PAGING_DEBUG
+
 #include "../../libc/include/printf.h"
 
-#define PAGING_DEBUG
+#endif
 
 static size_t* const page_directory = (size_t*)PAGE_DIR_ADDR;
 static size_t page_bitmap[TOTAL_PAGES / 32];
@@ -107,16 +111,16 @@ void free_pages(void* page, size_t n) {
 }
 
 void __paging_test() {
-    void* a = alloc_page();
-    void* b = alloc_page();
-    void* c = alloc_page();
-    void* d = alloc_page();
+    // void* a = alloc_page();
+    // void* b = alloc_page();
+    // void* c = alloc_page();
+    // void* d = alloc_page();
 
-    free_page(b);
-    void* e = alloc_pages(2);
-    free_pages(e, 2);
+    // free_page(b);
+    // void* e = alloc_pages(2);
+    // free_pages(e, 2);
 
-    #ifdef PAGING_DEBUG
+#ifdef PAGING_DEBUG
     printf("User pages allocated:\n");
     printf("=======================\n");
     for(size_t i = USER_PAGES_ADDR / PAGE_SIZE; i < TOTAL_PAGES; i++) {
@@ -125,5 +129,5 @@ void __paging_test() {
         }
     }
     printf("=======================\n\n");
-    #endif
+#endif
 }

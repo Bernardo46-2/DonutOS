@@ -1,93 +1,93 @@
 #include "../include/ctx.h"
 #include "../include/paging.h"
 #include "../include/asm.h"
+#include "../include/timer.h"
 
 #include "../../libc/include/printf.h"
+#include "../../libc/include/malloc.h"
+#include "../../libc/include/string.h"
 
-// URGENT:
-// need to setup a TSS inside the GDT
+// #define CTX_DEBUG
 
-// each context should have its own stack
-// keep an extra stack segment for kernel (probably the same stack currently being used)
+#define QUANTUM 1000
 
-// -- CONTEXT SWITCH --
-// when an interrupt triggers, the context will be pushed onto the stack
-// pop that stuff and store it in process_list (probably can just copy and then edit the values on the regs_t* struct)
-// search for next context to switch to
-// fill the stack with new context
-// let interrupt play as usuall
+static volatile size_t next_pid = 0;
+volatile uint8_t can_switch = 0;
+volatile uint8_t first_switch = 1;
 
-// if a context is storing packages to a buffer, treat that as a critical section
-// do not switch to a different context then
+tcb_t* fst_proc = NULL;
+tcb_t* lst_proc = NULL;
+tcb_t* curr_proc = NULL;
 
-static size_t curr_pid = 0;
-static tcb_t curr_proc;
-uint8_t can_switch = 0;
+static void print_regs(size_t pid, regs_t* rs) {
+    printf("pid: %d {\n", pid);
+    printf("    gs: 0x%08x, fs: 0x%08x, es: 0x%08x, ds: 0x%08x,\n", rs->gs, rs->fs, rs->es, rs->ds);
+    printf("    edi: 0x%08x, esi: 0x%08x, ebp: 0x%08x, esp: 0x%08x,\n", rs->edi, rs-> esi, rs->ebp, rs->esp);
+    printf("    ebx: 0x%08x, edx: 0x%08x, ecx: 0x%08x, eax: 0x%08x,\n", rs->ebx, rs->edx, rs->ecx, rs->eax);
+    printf("    int_no: 0x%08x, err_no: 0x%08x, eip: 0x%08x, cs: 0x%08x,\n", rs->int_no, rs->err_no, rs->eip, rs->cs);
+    printf("    eflags: 0x%08x, useresp: 0x%08x, ss: 0x%08x\n", rs->eflags, rs->useresp, rs->ss); 
+    printf("}\n\n");
+}
 
-// in switch_to_task.s
-extern void switch_to_task(tcb_t* tcb);
-
-static void process_a() {
+static void process_x() {
     int x = 0;
+    printf("------------------------------------\n");
     while(1) {
-        x--;
-        CRITICAL_SECTION_START;
-        printf("x = %d\n", x);
-        CRITICAL_SECTION_END;
+        x++;
+#ifndef CTX_DEBUG
+        if(x % 50000000 == 0) {
+            printf("x = %d timer = %d\n", x, timer_get());
+        }
+#endif
     }
 }
 
-static void process_b() {
+static void process_y() {
     int y = 0;
+    printf("------------------------------------\n");
     while(1) {
         y++;
-        CRITICAL_SECTION_START;
-        printf("y = %d\n", y);
-        CRITICAL_SECTION_END;
+#ifndef CTX_DEBUG
+        if(y % 50000000 == 0) {
+            printf("y = %d timer = %d\n", y, timer_get());
+        }
+#endif
     }
 }
 
-int spawn_process(size_t pid, void (*fn)()) {
-    void* p = alloc_page();
+static void __stub() {
+    curr_proc->fn();
+    curr_proc->dead = 1;
+    while(1);
+}
+
+static void __free_ctx(tcb_t* tcb) {
+    // TODO
+}
+
+int spawn_process(regs_t* rs, void (*fn)(), size_t n_pages) {
+    void* p = alloc_pages(n_pages);
     if(p == NULL) return 1;
     
-    const size_t stack_size = sizeof(regs_t)+1;
-    size_t* esp = (size_t*)p - stack_size;
-    
-    // maybe push esp here
-    // esp[0] = (size_t)esp;
-    // esp[1] = get_gs(); // gs
-    // esp[2] = get_fs(); // fs
-    // esp[3] = get_es(); // es
-    // esp[4] = get_ds(); // ds
-    // esp[5] = 0; // edi
-    // esp[6] = 0; // esi
-    // esp[7] = (size_t)(esp+stack_size); // ebp
-    // esp[8] = (size_t)esp; // esp
-    // esp[9] = 0; // ebx
-    // esp[10] = 0; // edx
-    // esp[11] = 0; // ecx
-    // esp[12] = 0; // eax
-    // esp[13] = 32; // int_no - double check this
-    // esp[14] = 0; // err_no
-    // esp[15] = (size_t)fn; // eip
-    // esp[16] = get_cs(); // cs
-    // esp[17] = get_flags(); // eflags - edit to get flags from main thread
-    // esp[18] = (size_t)esp; // useresp
-    // esp[19] = get_ss(); // ss
+    const size_t stack_size = sizeof(regs_t)+4;
+    size_t* esp = (size_t*)p + (PAGE_SIZE * n_pages) - stack_size;
+    tcb_t* new_proc = (tcb_t*)malloc(sizeof(tcb_t));
 
-    // set this as current process
-    curr_proc = (tcb_t) {
-        .esp = (size_t)esp,
-        .locked = 0,
+    *new_proc = (tcb_t) {
+        .pid = next_pid++,
+        .dead = 0,
+        .fn = fn,
+        
+        .n_pages = n_pages,
+        .fst_page = p,
+        
         .next = NULL,
-        .pid = pid,
-        .used = 1,
+        
         .regs = (regs_t) {
-            .gs = get_gs(),
-            .fs = get_fs(),
-            .es = get_es(),
-            .ds = get_ds(),
+            .gs = rs->gs,
+            .fs = rs->fs,
+            .es = rs->es,
+            .ds = rs->ds,
 
             .edi = 0,
             .esi = 0,
@@ -98,29 +98,99 @@ int spawn_process(size_t pid, void (*fn)()) {
             .ecx = 0,
             .eax = 0,
 
-            .int_no = 32, // double check
-            .err_no = 0,
+            .int_no = rs->int_no,
+            .err_no = rs->err_no,
 
-            .eip = (size_t)fn,
-            .cs = get_cs(),
-            .eflags = get_flags(),
+            .eip = (size_t)__stub,
+            .cs = rs->cs,
+            .eflags = rs->eflags,
             .useresp = (size_t)esp,
-            .ss = get_ss(),
+            .ss = rs->ss,
         },
     };
+
+    if(fst_proc == NULL) {
+        fst_proc = new_proc;
+        lst_proc = new_proc;
+        curr_proc = new_proc;
+
+        curr_proc->next = curr_proc;
+        curr_proc->prev = curr_proc;
+    } else {
+        new_proc->prev = lst_proc;
+        lst_proc->next = new_proc;
+        lst_proc = new_proc;
+        
+        new_proc->next = fst_proc;
+        fst_proc->prev = new_proc;
+    }
     
     return 0;
 }
 
+static void switch_ctx(regs_t* rs) {
+#ifdef CTX_DEBUG
+    print_regs(curr_proc->pid, rs);
+#endif
+    
+    // curr_proc->regs = *rs;
+    if(!first_switch) {
+        first_switch = 0;
+        memcpy(&curr_proc->regs, rs, sizeof(regs_t));
+    }
+    curr_proc = curr_proc->next;
+    // *rs = curr_proc->regs;
+    memcpy(rs, &curr_proc->regs, sizeof(regs_t));
+    
+#ifdef CTX_DEBUG
+    print_regs(curr_proc->pid, rs);
+#endif
+}
+
 void scheduler(regs_t* rs) {
-    if(can_switch) {
-        can_switch = 0;
-        // set_esp(curr_proc.esp);
-        *rs = curr_proc.regs;
+    static size_t last_ticks = 0;
+    size_t now = timer_get();
+
+    if(now > last_ticks + QUANTUM) {
+        last_ticks = now;
+
+        // TODO: handle dead processes
+        if(can_switch && curr_proc->next != curr_proc) {
+            switch_ctx(rs);
+        }
     }
 }
 
+void __spawn_dummy_processes(regs_t *rs) {
+    uint8_t x = spawn_process(rs, process_x, 4);
+    uint8_t y = spawn_process(rs, process_y, 4);
+    printf("%s\n", x || y ? "some error occured" : "dummy processes spawned");
+
+#ifdef CTX_DEBUG
+    printf("kernel regs:\n");
+    print_regs(0, rs);
+    
+    tcb_t* ptr = NULL;
+    for(ptr = fst_proc; ptr != lst_proc; ptr = ptr->next) {
+        print_regs(ptr->pid, &ptr->regs);
+    }
+    print_regs(ptr->pid, &ptr->regs);
+#endif
+}
+
+void __proc_kb_debug(regs_t* rs, unsigned char key) {
+    static uint8_t fst_press = 1;
+    
+    if(fst_press) {
+        fst_press = 0;
+        __spawn_dummy_processes(rs);
+    } else {
+        can_switch = !can_switch;
+    }
+}
+
+// TODO: create kernel process
 void __process_test() {
+    curr_proc = lst_proc;
     can_switch = 1;
-    spawn_process(curr_pid++, process_b);
 }
