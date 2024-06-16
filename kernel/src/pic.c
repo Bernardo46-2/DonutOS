@@ -115,12 +115,6 @@ void pic_clear_mask(uint8_t irq_line) {
 
 // =============================================================== //
 
-// (some) PIC registers
-// 
-// isr: 
-// irr: 
-// imr: 
-
 #define PIC_READ_ISR    0x0a
 #define PIC_READ_IRR    0x0b
 

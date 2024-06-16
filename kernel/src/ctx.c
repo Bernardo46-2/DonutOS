@@ -2,13 +2,14 @@
 #include "../include/paging.h"
 #include "../include/asm.h"
 #include "../include/timer.h"
+#include "../include/sys.h"
 
 #include "../../libc/include/printf.h"
 #include "../../libc/include/malloc.h"
 #include "../../libc/include/string.h"
 
 // #define CTX_DEBUG
-#define QUANTUM 100
+#define QUANTUM 1000
 
 static volatile size_t next_pid = 0;
 static volatile uint8_t scheduler_on = 0;
@@ -19,7 +20,7 @@ volatile tcb_t* lst_proc = NULL;
 volatile tcb_t* curr_proc = NULL;
 
 static void print_regs(size_t pid, regs_t* rs) {
-    printf("pid: %d {\n", pid);
+    printf("pid: %d {\n", (int)pid);
     printf("    gs: 0x%08x, fs: 0x%08x, es: 0x%08x, ds: 0x%08x,\n", rs->gs, rs->fs, rs->es, rs->ds);
     printf("    edi: 0x%08x, esi: 0x%08x, ebp: 0x%08x, esp: 0x%08x,\n", rs->edi, rs-> esi, rs->ebp, rs->esp);
     printf("    ebx: 0x%08x, edx: 0x%08x, ecx: 0x%08x, eax: 0x%08x,\n", rs->ebx, rs->edx, rs->ecx, rs->eax);
@@ -28,47 +29,45 @@ static void print_regs(size_t pid, regs_t* rs) {
     printf("}\n\n");
 }
 
-static void process_x() {
+static volatile int process_x() {
     int x = 0;
     printf("------------------------------------\n");
     while(1) {
         x++;
 #ifndef CTX_DEBUG
         if(x % 50000000 == 0) {
-            printf("x = %d timer = %d\n", x, timer_get());
+            printf("x = %d timer = %d\n", x, (int)timer_get());
         }
 #endif
     }
+    return 0;
 }
 
-static void process_y() {
+static volatile int process_y() {
     int y = 0;
     printf("------------------------------------\n");
     while(1) {
         y++;
 #ifndef CTX_DEBUG
         if(y % 50000000 == 0) {
-            printf("y = %d timer = %d\n", y, timer_get());
+            printf("y = %d timer = %d\n", y, (int)timer_get());
         }
 #endif
     }
+    return 0;
 }
 
 static void __stub() {
-    curr_proc->fn();
+    last_error = curr_proc->fn();
     curr_proc->dead = 1;
     while(1);
 }
 
-static void __free_ctx(tcb_t* tcb) {
-    // TODO
-}
-
-int spawn_process(regs_t* rs, void (*fn)(), size_t n_pages) {
+int spawn_process(regs_t* rs, volatile int (*fn)(), size_t n_pages) {
     void* p = alloc_pages(n_pages);
     if(p == NULL) return 1;
     
-    const size_t stack_size = sizeof(regs_t);
+    const size_t stack_size = sizeof(regs_t)+4;
     size_t* esp = (size_t*)p + (PAGE_SIZE * n_pages) - stack_size;
     tcb_t* new_proc = (tcb_t*)malloc(sizeof(tcb_t));
 
@@ -138,7 +137,7 @@ void scheduler(regs_t* rs) {
 
         if(can_switch && curr_proc->next != curr_proc) {
             while(curr_proc->next->dead) {
-                tcb_t* tmp = curr_proc->next;
+                tcb_t* tmp = (tcb_t*)curr_proc->next;
                 free_pages(tmp->fst_page, tmp->n_pages);
                 curr_proc->next = tmp->next;
                 free(tmp);
@@ -173,7 +172,7 @@ void __spawn_dummy_processes(regs_t *rs) {
 
 #ifdef CTX_DEBUG
     tcb_t* ptr = NULL;
-    for(ptr = fst_proc; ptr != lst_proc; ptr = ptr->next) {
+    for(ptr = (tcb_t*)fst_proc; ptr != lst_proc; ptr = (tcb_t*)ptr->next) {
         print_regs(ptr->pid, &ptr->regs);
     }
     print_regs(ptr->pid, &ptr->regs);

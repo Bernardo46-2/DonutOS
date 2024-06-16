@@ -28,7 +28,7 @@ static int __rand_command(const char* _);
 static int __clear_command(const char* _);
 static int __paging_test_command(const char* _);
 static int __process_test_command(const char* _);
-
+static int __process_last_error_command(const char* _);
 
 struct Command {
     char name[8];

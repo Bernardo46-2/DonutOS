@@ -12,7 +12,7 @@
 typedef struct tcb_s {
     size_t pid;
     uint8_t dead;
-    void (*fn)();
+    volatile int (*fn)();
     
     size_t n_pages;
     void* fst_page;
@@ -24,7 +24,7 @@ typedef struct tcb_s {
 
 extern volatile uint8_t can_switch;
 
-int spawn_process(regs_t* rs, void (*fn)(), size_t n_pages);
+int spawn_process(regs_t* rs, volatile int (*fn)(), size_t n_pages);
 void scheduler(regs_t* rs);
 void __spawn_dummy_processes(regs_t* rs);
 void __proc_kb_debug(regs_t* rs, unsigned char key);

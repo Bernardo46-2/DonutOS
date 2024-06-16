@@ -7,6 +7,7 @@
 #include "../include/sys.h"
 #include "../include/paging.h"
 #include "../include/ctx.h"
+#include "../include/sys.h"
 
 #include "../../libc/include/net.h"
 #include "../../libc/include/atoi.h"
@@ -40,8 +41,8 @@ static size_t tty_input_ptr;
 static size_t tty_input_len;
 
 static size_t history_ptr;
-static int32_t history_fst;
-static int32_t history_lst;
+static size_t history_fst;
+static size_t history_lst;
 
 const struct Command commands[] = {
             {"help", __help_command, "show this command"},
@@ -58,9 +59,10 @@ const struct Command commands[] = {
             {"net", __net_status_command, "start net device"},
             {"paging", __paging_test_command, "test paging"},
             {"process", __process_test_command, "test process"},
+            {"$?", __process_last_error_command, "print out last error code"},
 };
 
-// ---------------------------------------  ------------------------------------------------------------------------------------------------- //
+// ----------------------------------------------------------------------------------------------------------------------------------------- //
 
 void tty_init() {
     // output
@@ -122,19 +124,19 @@ static void __tty_write_char(const uint16_t c) {
 
     CRITICAL_SECTION_START;
     switch(c) {
-    case '\n':
-        tty_ptr += VGA_WIDTH - TTY_COL;
-        break;
-    case '\r':
-        tty_ptr -= TTY_COL;
-        break;
-    case '\b':
-        tty_ptr--;
-        break;
-    default:
-        entry = vga_entry(c, tty_color);
-        tty_buffer[tty_ptr++] = entry;
-        break;
+        case '\n':
+            tty_ptr += VGA_WIDTH - TTY_COL;
+            break;
+        case '\r':
+            tty_ptr -= TTY_COL;
+            break;
+        case '\b':
+            tty_ptr--;
+            break;
+        default:
+            entry = vga_entry(c, tty_color);
+            tty_buffer[tty_ptr++] = entry;
+            break;
     }
     CRITICAL_SECTION_END;
 }
@@ -292,82 +294,84 @@ static void __tty_handle_key() {
     unsigned char key = tty_last_key;
     
     if(!(tty_stop_read = key == '\n')) {
-       switch(key) {
-           case KEY_UP:
-               __history_prev_buf();
-               break;
-           case KEY_DOWN:
-               __history_next_buf();
-               break;
-           case KEY_LEFT:
-               if(0 < tty_input_ptr && tty_input_ptr <= tty_input_len) {
-                   tty_ptr--;
-                   tty_input_ptr--;
-                   tty_update_cursor();
-               }
-               break;
-           case KEY_RIGHT:
-               if(0 <= tty_input_ptr && tty_input_ptr < tty_input_len) {
-                   tty_ptr++;
-                   tty_input_ptr++;
-                   tty_update_cursor();
-               }
-               break;
-           case KEY_HOME:
-               tty_ptr -= tty_input_ptr;
-               tty_input_ptr = 0;
-               tty_update_cursor();
-               break;
-           case KEY_END:
-               tty_ptr += tty_input_len - tty_input_ptr;
-               tty_input_ptr = tty_input_len;
-               tty_update_cursor();
-               break;
-           case KEY_BACKSPACE:
-               if(tty_input_len > 0 && tty_input_ptr > 0) {
-                   if(tty_input_ptr == tty_input_len) {
-                       tty_puts("\b \b");
-                       tty_input_len--;
-                       tty_input_ptr--;
-                   } else {
-                       for(size_t i = tty_ptr-1; i < tty_ptr+tty_input_len-1; i++) {
-                           tty_buffer[i] = tty_buffer[i+1];
-                       }
-                       tty_buffer[tty_ptr + tty_input_len] = vga_entry(' ', tty_color);
-                       tty_ptr--;
-
-                       memmove((void*)(tty_input_buf+tty_input_ptr-1), (void*)(tty_input_buf+tty_input_ptr), tty_input_len - tty_input_ptr);
-                       tty_input_ptr--;
-                       tty_input_len--;
-                       tty_update_cursor();
-                   }
-               }
-               break;
-           case KEY_DELETE:
-                if (tty_input_len > 0 && tty_input_ptr < tty_input_len) {
-                    for (size_t i = tty_ptr; i < tty_ptr + tty_input_len - 1; i++) {
-                        tty_buffer[i] = tty_buffer[i + 1];
-                    }
-                    tty_buffer[tty_ptr + tty_input_len - 1] = vga_entry(0, tty_color);
+        CRITICAL_SECTION_START;
+        switch(key) {
+            case KEY_UP:
+                __history_prev_buf();
+                break;
+            case KEY_DOWN:
+                __history_next_buf();
+                break;
+            case KEY_LEFT:
+                if(0 < tty_input_ptr && tty_input_ptr <= tty_input_len) {
+                    tty_ptr--;
+                    tty_input_ptr--;
                     tty_update_cursor();
-
-                    memmove((void*)(tty_input_buf + tty_input_ptr), (void*)(tty_input_buf + tty_input_ptr + 1), tty_input_len - tty_input_ptr);
-                    tty_input_len--;
-                    
                 }
-               break;
-           default:
-               if(tty_input_len > tty_input_ptr) {
-                   for(size_t i = tty_input_len; i > tty_input_ptr; i--) {
-                       tty_input_buf[i] = tty_input_buf[i-1];
-                       tty_buffer[tty_ptr+(i-tty_input_ptr)] = tty_buffer[tty_ptr+(i-tty_input_ptr-1)];
-                   }
-               }
-               tty_input_len++;
-               tty_input_buf[tty_input_ptr++] = key;
-               tty_putc(key);
-               break;
-       }
+                break;
+            case KEY_RIGHT:
+                if(0 <= tty_input_ptr && tty_input_ptr < tty_input_len) {
+                    tty_ptr++;
+                    tty_input_ptr++;
+                    tty_update_cursor();
+                }
+                break;
+            case KEY_HOME:
+                tty_ptr -= tty_input_ptr;
+                tty_input_ptr = 0;
+                tty_update_cursor();
+                break;
+            case KEY_END:
+                tty_ptr += tty_input_len - tty_input_ptr;
+                tty_input_ptr = tty_input_len;
+                tty_update_cursor();
+                break;
+            case KEY_BACKSPACE:
+                if(tty_input_len > 0 && tty_input_ptr > 0) {
+                    if(tty_input_ptr == tty_input_len) {
+                        tty_puts("\b \b");
+                        tty_input_len--;
+                        tty_input_ptr--;
+                    } else {
+                        for(size_t i = tty_ptr-1; i < tty_ptr+tty_input_len-1; i++) {
+                            tty_buffer[i] = tty_buffer[i+1];
+                        }
+                        tty_buffer[tty_ptr + tty_input_len] = vga_entry(' ', tty_color);
+                        tty_ptr--;
+
+                        memmove((void*)(tty_input_buf+tty_input_ptr-1), (void*)(tty_input_buf+tty_input_ptr), tty_input_len - tty_input_ptr);
+                        tty_input_ptr--;
+                        tty_input_len--;
+                        tty_update_cursor();
+                    }
+                }
+                break;
+            case KEY_DELETE:
+                 if (tty_input_len > 0 && tty_input_ptr < tty_input_len) {
+                     for (size_t i = tty_ptr; i < tty_ptr + tty_input_len - 1; i++) {
+                         tty_buffer[i] = tty_buffer[i + 1];
+                     }
+                     tty_buffer[tty_ptr + tty_input_len - 1] = vga_entry(0, tty_color);
+                     tty_update_cursor();
+
+                     memmove((void*)(tty_input_buf + tty_input_ptr), (void*)(tty_input_buf + tty_input_ptr + 1), tty_input_len - tty_input_ptr);
+                     tty_input_len--;
+                     
+                 }
+                break;
+            default:
+                if(tty_input_len > tty_input_ptr) {
+                    for(size_t i = tty_input_len; i > tty_input_ptr; i--) {
+                        tty_input_buf[i] = tty_input_buf[i-1];
+                        tty_buffer[tty_ptr+(i-tty_input_ptr)] = tty_buffer[tty_ptr+(i-tty_input_ptr-1)];
+                    }
+                }
+                tty_input_len++;
+                tty_input_buf[tty_input_ptr++] = key;
+                tty_putc(key);
+                break;
+        }
+        CRITICAL_SECTION_END;
     }
 }
 
@@ -382,9 +386,7 @@ void tty_read(char* dest) {
 
     while(tty_input_len < TTY_INPUT_SIZE && !tty_stop_read) {
         if(tty_has_key_ready) {
-            CRITICAL_SECTION_START;
             __tty_handle_key();
-            CRITICAL_SECTION_END;
         }
     }
 
@@ -439,11 +441,11 @@ static int __dev_command(const char* _) {
 
 static int __pctprint_command_write_line(int index) {
     struct EthernetHeader* ethHeader = rtl8139_get_ethHeader(index);
-    if (ethHeader == NULL) {
+    if(ethHeader == NULL) {
         return -1;
     }
 
-    switch (ethHeader->etherType) {
+    switch(ethHeader->etherType) {
         case 0x0800:
             printf("IPv4 ");
             printf("Source IP: ");
@@ -479,8 +481,8 @@ static int __pctprint_command(const char* _) {
     int lastNHeaders = 0;
     int lastSelectedIndex = 0;
 
-    while (1) {
-        if (tty_has_key_ready == 0 && lastNHeaders == nHeaders && lastSelectedIndex == selectedIndex) {
+    while(1) {
+        if(tty_has_key_ready == 0 && lastNHeaders == nHeaders && lastSelectedIndex == selectedIndex) {
             continue;
         } 
         lastNHeaders = nHeaders;
@@ -493,57 +495,53 @@ static int __pctprint_command(const char* _) {
         int viewOffset = selectedIndex - 6;
         viewOffset = viewOffset < 0 ? 0 : viewOffset;
 
-        for (int i = viewOffset; i < nHeaders && i < viewOffset + 11; i++) {
-            if (i == selectedIndex) {
+        for(int i = viewOffset; i < nHeaders && i < viewOffset + 11; i++) {
+            if(i == selectedIndex) {
                 tty_color = vga_color(VGA_COLOR_BLACK, VGA_COLOR_LIGHT_GREY);
-            } else if ( i % 2 == 0) {
+            } else if(i % 2 == 0) {
                 tty_color = vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-            }else {
+            } else {
                 tty_color = vga_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
             }
             
-            if (__pctprint_command_write_line(i) == -1) {
+            if(__pctprint_command_write_line(i) == -1) {
                 break;
             }
         }
 
         tty_color = vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
 
-
-        switch (tty_last_key)
-        {
-        case KEY_UP:
-            if (selectedIndex > 0) {
-                selectedIndex--;
-            }
-            break;
-        case KEY_DOWN:
-            if (selectedIndex < nHeaders - 1) {
-                selectedIndex++;
-            }
-            break;
-        case '\n':
-            tty_has_key_ready = 0;
-            __tty_clear_scr();
-            rtl_printFrame(selectedIndex);
-            while (tty_has_key_ready == 0);
-            break;
+        switch(tty_last_key) {
+            case KEY_UP:
+                if(selectedIndex > 0) {
+                    selectedIndex--;
+                }
+                break;
+            case KEY_DOWN:
+                if(selectedIndex < nHeaders - 1) {
+                    selectedIndex++;
+                }
+                break;
+            case '\n':
+                tty_has_key_ready = 0;
+                __tty_clear_scr();
+                rtl_printFrame(selectedIndex);
+                while (tty_has_key_ready == 0);
+                break;
         }
 
         tty_has_key_ready = 0;
         tty_last_key = 0;
     
         //delay
-        for (int i = 0; i < 1000000; i++);
-    
+        for(int i = 0; i < 1000000; i++);
     }
 
     return 0;
 }
 
-
 static int __help_command(const char* _) {
-    for (int i = 0; i < sizeof(commands)/sizeof(struct Command); i++) {
+    for(int i = 0; i < sizeof(commands)/sizeof(struct Command); i++) {
         printf("%s - %s\n", commands[i].name, commands[i].description);
     }
     return 0;
@@ -555,11 +553,11 @@ static int __about_command(const char* _) {
 }
 static int __donut_command(const char* _) {
     __tty_clear_scr();
-            vga_disable_cursor();
-            donut();
-            vga_enable_cursor(0, 15);
-            __tty_clear_scr();
-            return 0;
+    vga_disable_cursor();
+    donut();
+    vga_enable_cursor(0, 15);
+    __tty_clear_scr();
+    return 0;
 }
 static int __die_command(const char* _) {
     blue_scr(666, "the pumpkins are ready to march on mankind");
@@ -585,9 +583,13 @@ static int __process_test_command(const char* _) {
     return 0;
 }
 
+static int __process_last_error_command(const char* _) {
+    printf("%d\n", last_error);
+    return 0;
+}
+
 // ---------------------------------------------------------------------------------------------------------------------------------------- //
 
-// TODO: move the command handler somewhere else
 void tty_prompt() {
     char str[TTY_INPUT_SIZE];
     
@@ -602,8 +604,8 @@ void tty_prompt() {
 
         uint8_t found = 0;
 
-        for (int i = 0; i < sizeof(commands)/sizeof(struct Command); i++) {
-            if (strcmp(str, (void*)commands[i].name) == 0) {
+        for(int i = 0; i < sizeof(commands)/sizeof(struct Command); i++) {
+            if(strcmp(str, (void*)commands[i].name) == 0) {
                 found = 1;
                 int err = commands[i].handler(str) != 0;
                 if (err) printf("The command run into an error (%d)\n", err);
@@ -611,6 +613,6 @@ void tty_prompt() {
             }
         }
 
-        if (!found) printf("Command not found\n");
+        if(!found) printf("Command not found\n");
     }
 }
