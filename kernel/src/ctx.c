@@ -13,7 +13,7 @@
 
 static volatile size_t next_pid = 0;
 static volatile uint8_t scheduler_on = 0;
-volatile uint8_t can_switch = 0;
+volatile uint8_t lock_ctx = 0;
 
 volatile tcb_t* fst_proc = NULL;
 volatile tcb_t* lst_proc = NULL;
@@ -21,17 +21,17 @@ volatile tcb_t* curr_proc = NULL;
 
 static void print_regs(size_t pid, regs_t* rs) {
     printf("pid: %d {\n", (int)pid);
-    printf("    gs: 0x%08x, fs: 0x%08x, es: 0x%08x, ds: 0x%08x,\n", rs->gs, rs->fs, rs->es, rs->ds);
-    printf("    edi: 0x%08x, esi: 0x%08x, ebp: 0x%08x, esp: 0x%08x,\n", rs->edi, rs-> esi, rs->ebp, rs->esp);
+    printf("    gs:  0x%08x, fs:  0x%08x, es:  0x%08x, ds:  0x%08x,\n", rs->gs, rs->fs, rs->es, rs->ds);
+    printf("    edi: 0x%08x, esi: 0x%08x, ebp: 0x%08x, esp: 0x%08x,\n", rs->edi, rs->esi, rs->ebp, rs->esp);
     printf("    ebx: 0x%08x, edx: 0x%08x, ecx: 0x%08x, eax: 0x%08x,\n", rs->ebx, rs->edx, rs->ecx, rs->eax);
-    printf("    int_no: 0x%08x, err_no: 0x%08x, eip: 0x%08x, cs: 0x%08x,\n", rs->int_no, rs->err_no, rs->eip, rs->cs);
-    printf("    eflags: 0x%08x, useresp: 0x%08x, ss: 0x%08x\n", rs->eflags, rs->useresp, rs->ss); 
-    printf("}\n\n");
+    printf("    int_no: 0x%08x, err_no: 0x%08x,\n", rs->int_no, rs->err_no);
+    printf("    eip: 0x%08x, cs:  0x%08x, eflags: 0x%08x\n", rs->eip, rs->cs, rs->eflags); 
+    printf("}\n");
 }
 
-static volatile int process_x() {
-    int x = 0;
-    printf("------------------------------------\n");
+static int process_x() {
+    register int x = 0;
+    printf("x start\n");
     while(1) {
         x++;
 #ifndef CTX_DEBUG
@@ -43,9 +43,9 @@ static volatile int process_x() {
     return 0;
 }
 
-static volatile int process_y() {
-    int y = 0;
-    printf("------------------------------------\n");
+static int process_y() {
+    register int y = 0;
+    printf("y start\n");
     while(1) {
         y++;
 #ifndef CTX_DEBUG
@@ -63,7 +63,7 @@ static void __stub() {
     while(1);
 }
 
-int spawn_process(regs_t* rs, volatile int (*fn)(), size_t n_pages) {
+int spawn_process(regs_t* rs, int (*fn)(), size_t n_pages) {
     void* p = alloc_pages(n_pages);
     if(p == NULL) return 1;
     
@@ -102,8 +102,6 @@ int spawn_process(regs_t* rs, volatile int (*fn)(), size_t n_pages) {
             .eip = (size_t)__stub,
             .cs = rs->cs,
             .eflags = rs->eflags,
-            .useresp = (size_t)esp,
-            .ss = rs->ss,
         },
     };
 
@@ -135,7 +133,7 @@ void scheduler(regs_t* rs) {
     if(scheduler_on && now > last_ticks + QUANTUM) {
         last_ticks = now;
 
-        if(can_switch && curr_proc->next != curr_proc) {
+        if(lock_ctx == 0 && curr_proc->next != curr_proc) {
             while(curr_proc->next->dead) {
                 tcb_t* tmp = (tcb_t*)curr_proc->next;
                 free_pages(tmp->fst_page, tmp->n_pages);
@@ -164,18 +162,26 @@ int spawn_kernel_process(regs_t* rs) {
     return 0;
 }
 
-void __spawn_dummy_processes(regs_t *rs) {
-    uint8_t k = spawn_kernel_process(rs);
-    uint8_t x = spawn_process(rs, process_x, 4);
-    uint8_t y = spawn_process(rs, process_y, 4);
-    printf("%s\n", k || x || y ? "some error occured" : "dummy processes spawned");
+void __print_kernel_proc_regs() {
+    print_regs(fst_proc->pid, (regs_t*)&fst_proc->regs);
+}
 
-#ifdef CTX_DEBUG
+void __print_all_regs() {
     tcb_t* ptr = NULL;
     for(ptr = (tcb_t*)fst_proc; ptr != lst_proc; ptr = (tcb_t*)ptr->next) {
         print_regs(ptr->pid, &ptr->regs);
     }
     print_regs(ptr->pid, &ptr->regs);
+}
+
+void __spawn_dummy_processes(regs_t *rs) {
+    uint8_t k = spawn_kernel_process(rs);
+    uint8_t x = spawn_process(rs, process_x, 8);
+    uint8_t y = spawn_process(rs, process_y, 1);
+    printf("%s\n", k || x || y ? "some error occured" : "dummy processes spawned");
+
+#ifdef CTX_DEBUG
+    __print_all_regs();
 #endif
 }
 
@@ -186,12 +192,11 @@ void __proc_kb_debug(regs_t* rs, unsigned char key) {
         fst_press = 0;
         __spawn_dummy_processes(rs);
     } else {
-        can_switch = !can_switch;
+        scheduler_on = !scheduler_on;
     }
 }
 
 void __process_test() {
     curr_proc = fst_proc;
     scheduler_on = 1;
-    can_switch = 1;
 }

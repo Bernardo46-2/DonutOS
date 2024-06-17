@@ -17,6 +17,8 @@
 #include "../../libc/include/rand.h"
 #include "../../libc/include/malloc.h"
 
+// #define CTX_DEBUG
+
 #define TTY_INPUT_SIZE  512
 #define TTY_HISTORY_SIZE 16
 
@@ -24,15 +26,15 @@
 #define TTY_COL (tty_ptr % VGA_WIDTH)
 
 // output
-static uint16_t* tty_buffer;
-static size_t tty_prompt_ptr;
-static size_t tty_ptr;
-static uint16_t tty_color;
+static volatile uint16_t* tty_buffer;
+static volatile size_t tty_prompt_ptr;
+static volatile size_t tty_ptr;
+static volatile uint16_t tty_color;
 
 // input
 static volatile uint8_t tty_has_key_ready;
 static volatile uint8_t tty_last_key;
-static uint8_t tty_stop_read;
+static volatile uint8_t tty_stop_read;
 
 static char tty_history[TTY_HISTORY_SIZE][TTY_INPUT_SIZE] = { 0 };
 
@@ -347,7 +349,7 @@ static void __tty_handle_key() {
                 }
                 break;
             case KEY_DELETE:
-                 if (tty_input_len > 0 && tty_input_ptr < tty_input_len) {
+                 if(tty_input_len > 0 && tty_input_ptr < tty_input_len) {
                      for (size_t i = tty_ptr; i < tty_ptr + tty_input_len - 1; i++) {
                          tty_buffer[i] = tty_buffer[i + 1];
                      }
@@ -356,7 +358,6 @@ static void __tty_handle_key() {
 
                      memmove((void*)(tty_input_buf + tty_input_ptr), (void*)(tty_input_buf + tty_input_ptr + 1), tty_input_len - tty_input_ptr);
                      tty_input_len--;
-                     
                  }
                 break;
             default:
@@ -372,6 +373,11 @@ static void __tty_handle_key() {
                 break;
         }
         CRITICAL_SECTION_END;
+    } else {
+#ifdef CTX_DEBUG
+        __print_kernel_proc_regs();
+        __print_all_regs();
+#endif
     }
 }
 
@@ -473,7 +479,6 @@ static int __pctprint_command_write_line(int index) {
 }
 
 static int __pctprint_command(const char* _) {
-
     kb_set_key_handler(__tty_read_key); //TODO: write a function to set the key handler
     vga_disable_cursor();
 
@@ -528,6 +533,12 @@ static int __pctprint_command(const char* _) {
                 rtl_printFrame(selectedIndex);
                 while (tty_has_key_ready == 0);
                 break;
+            case 'q':
+                __tty_clear_scr();
+                tty_has_key_ready = 0;
+                tty_last_key = 0;
+                vga_enable_cursor(0, 15);
+                return 0;
         }
 
         tty_has_key_ready = 0;
