@@ -1,5 +1,6 @@
 #include "../include/donut.h"
-#include "../include/vga.h"
+#include "../include/tty.h"
+#include "../include/kb.h"
 
 #include "../../libc/include/stdlib.h"
 #include "../../libc/include/stdio.h"
@@ -17,12 +18,28 @@
   x = x*_>>10; \
   y = y*_>>10;
 
-int8_t b[1760], z[1760];
+static char __quit = 0;
+static uint16_t __tty_color = 0;
+
+static void __donut_key_handler(uint8_t scancode) {
+    __quit = 1;
+    kb_set_key_handler(NULL);
+    tty_set_color(__tty_color & 0xff, (__tty_color >> 16) & 0xff);
+}
 
 void donut() {
+    int8_t b[1760], z[1760];
+    int sA=1024,cA=0,sB=1024,cB=0,_,frame=0;
+    char str[10];
     vga_disable_cursor();
-    int sA=1024,cA=0,sB=1024,cB=0,_;
-    for (;;) {
+    __tty_color = tty_get_color();
+    kb_set_key_handler(__donut_key_handler);
+    for (;;frame++) {
+        if (__quit) {
+            __quit = 0;
+            return;
+        }
+        tty_set_color((frame/50 + 1) % 16, (__tty_color >> 16) % 16);
         memset(b, 32, 1760);  // text buffer
         memset(z, 127, 1760);   // z buffer
         int sj=0, cj=1024;

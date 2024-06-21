@@ -25,6 +25,7 @@ inline void mrand(int max) {
 }
 
 void srand(int seed) {
+    mrand(4206911);
     seed %= RAND_MAX;
     s0 = seed;
     s1 = (s0 * RAND_MAX - 1) % RAND_MAX;

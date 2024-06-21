@@ -9,8 +9,8 @@
 #include <stdarg.h>
 
 static void str_to_upper(char *str) {
-    while (*str) {
-        if (*str >= 'a' && *str <= 'z') {
+    while(*str) {
+        if(*str >= 'a' && *str <= 'z') {
             *str = *str - 'a' + 'A';
         }
         str++;
@@ -62,79 +62,109 @@ int printf(const char* fmt, ...) {
             
             // handling the actual formatting type
             switch(c) {
-            case '%':
-                *s = '%';
-                s++;
-                break;
-            case 'i':
-            case 'd':
-                itoa(va_arg(ap, int), helper_str, helper_len, 10);
-                
-                value_len = strlen(helper_str);
-                if(leading_len > value_len)
-                    memset(s, leading_char, leading_len - value_len);
-                
-                if(leading_len > value_len)
-                    s += leading_len - value_len;
-                strcpy(s, helper_str);
-                s += value_len;
-                break;
-            case 'x':
-                itoa(va_arg(ap, int), helper_str, helper_len, 16);
-                
-                value_len = strlen(helper_str);
-                if(leading_len > value_len)
-                    memset(s, leading_char, leading_len - value_len);
-                
-                if(leading_len > value_len)
-                    s += leading_len - value_len;
-                strcpy(s, helper_str);
-                s += value_len;
-                break;
-            case 'X':
-                itoa(va_arg(ap, int), helper_str, helper_len, 16);
-                str_to_upper(helper_str);
-                value_len = strlen(helper_str);
-                if(leading_len > value_len)
-                    memset(s, leading_char, leading_len - value_len);
-                
-                if(leading_len > value_len)
-                    s += leading_len - value_len;
-                strcpy(s, helper_str);
-                s += value_len;
-                break;
-            case 'b':
-                itoa(va_arg(ap, int), helper_str, helper_len, 2);
-                
-                value_len = strlen(helper_str);
-                if(leading_len > value_len)
-                    memset(s, leading_char, leading_len - value_len);
-                
-                if(leading_len > value_len)
-                    s += leading_len - value_len;
-                strcpy(s, helper_str);
-                s += value_len;
-                break;
-            case 'f':
-                // just dont use floats ._.
-                break;
-            case 'c':
-                *s = (char)va_arg(ap, int);
-                s++;
-                break;
-            case 's':
-                tmp = va_arg(ap, char*);
-                strcpy(s, tmp);
-                s += strlen(tmp);
-                break;
-            default:
-                *s = c;
-                s++;
-                break;
+                case '%':
+                    *s = '%';
+                    s++;
+                    break;
+                case 'i':
+                case 'd':
+                    itoa(va_arg(ap, int), helper_str, helper_len, 10);
+                    
+                    value_len = strlen(helper_str);
+                    if(leading_len > value_len)
+                        memset(s, leading_char, leading_len - value_len);
+                    
+                    if(leading_len > value_len)
+                        s += leading_len - value_len;
+                    strcpy(s, helper_str);
+                    s += value_len;
+                    break;
+                case 'x':
+                    itoa(va_arg(ap, int), helper_str, helper_len, 16);
+                    
+                    value_len = strlen(helper_str);
+                    if(leading_len > value_len)
+                        memset(s, leading_char, leading_len - value_len);
+                    
+                    if(leading_len > value_len)
+                        s += leading_len - value_len;
+                    strcpy(s, helper_str);
+                    s += value_len;
+                    break;
+                case 'X':
+                    itoa(va_arg(ap, int), helper_str, helper_len, 16);
+                    str_to_upper(helper_str);
+                    value_len = strlen(helper_str);
+                    if(leading_len > value_len)
+                        memset(s, leading_char, leading_len - value_len);
+                    
+                    if(leading_len > value_len)
+                        s += leading_len - value_len;
+                    strcpy(s, helper_str);
+                    s += value_len;
+                    break;
+                case 'b':
+                    itoa(va_arg(ap, int), helper_str, helper_len, 2);
+                    
+                    value_len = strlen(helper_str);
+                    if(leading_len > value_len)
+                        memset(s, leading_char, leading_len - value_len);
+                    
+                    if(leading_len > value_len)
+                        s += leading_len - value_len;
+                    strcpy(s, helper_str);
+                    s += value_len;
+                    break;
+                case 'f':
+                    {
+                        double value = va_arg(ap, double);
+                        int int_part = (int)value;
+                        double fraction_part = value - int_part;
+    
+                        itoa(int_part, helper_str, helper_len, 10);
+                        value_len = strlen(helper_str);
+                        if(leading_len > value_len)
+                            memset(s, leading_char, leading_len - value_len);
+    
+                        if(leading_len > value_len)
+                            s += leading_len - value_len;
+                        strcpy(s, helper_str);
+                        s += value_len;
+    
+                        // Decimal point
+                        *s = '.';
+                        s++;
+    
+                        // Convert fraction part to string
+                        for(int i = 0; i < 6; i++) {
+                            fraction_part *= 10;
+                            int digit = (int)fraction_part;
+                            helper_str[i] = '0' + digit;
+                            fraction_part -= digit;
+                        }
+                        helper_str[6] = '\0';
+                        value_len = strlen(helper_str);
+                        strcpy(s, helper_str);
+                        s += value_len;
+                    }
+                    break;
+                case 'c':
+                    *s = (char)va_arg(ap, int);
+                    s++;
+                    break;
+                case 's':
+                    tmp = va_arg(ap, char*);
+                    strcpy(s, tmp);
+                    s += strlen(tmp);
+                    break;
+                default:
+                    *s = c;
+                    s++;
+                    break;
+                }
             }
-        }
-
-        fmt++;
+    
+            fmt++;
     }
 
     *s = '\0';

@@ -7,36 +7,76 @@
 #include "../../libc/include/malloc.h"
 #include "../../libc/include/time.h"
 
+virtio_net_device vn;
+
 void virtio_init_queues(virtio_device *virtio_pci, uint32_t bar0_address);
-void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_size);
+int virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_size);
 void negotiate(uint32_t *features);
 int virtio_init(virtio_device *virtio);
 int virtio_net_init();
+
 
 int virtio_net_init() {
     uint8_t *buf;
     virtio_device virtio_device;
     int err = virtio_init(&virtio_device);
-    if (err) goto err1;
+    if (err) return err;
 
     virtio_net_device virtio_net = {
         .vendor_id = virtio_device.vendor_id,
         .device_id = virtio_device.device_id,
         .io_address = virtio_device.bars.bar[0] & ~0x3,
         .irq = virtio_device.irq,
-        .queue_n = virtio_device.queue_n,
-        .mac_address = 0,
     };
+    virtio_net.queue[0] = virtio_device.queue[0];
+    virtio_net.queue[1] = virtio_device.queue[1];
+
+    if (virtio_net.queue[0].desc == 0 || virtio_net.queue[1].desc == 0) {
+        int err = ERR_DEVICE_BAD_CONFIGURATION;
+        
+        if (err) printf("Error %d, while trying to start the network device: ", err);
+        switch (err)
+        {
+        case 0:
+            break;
+        case ERR_DEVICE_BAD_CONFIGURATION:
+            printf("ERR_DEVICE_BAD_CONFIGURATION\n");
+            break;
+        case ERR_CONFIG_NOT_ACCEPTED:
+            printf("ERR_CONFIG_NOT_ACCEPTED\n");
+            break;
+        case ERR_DEVICE_NOT_FOUND:
+            printf("ERR_DEVICE_NOT_FOUND\n");
+            break;
+        }
+        
+        return ERR_DEVICE_BAD_CONFIGURATION;
+    }
+
 
     // Get MAC address
     uint64_t tempq = 0;
     for (int i = 0; i < 6; i++) {
-        tempq = (tempq << 8) | inb(virtio_net.io_address + 0x14 + i);
+        tempq = (tempq << 8) | inb(virtio_net.io_address + DEVICE_CONFIG + i);
     }
     virtio_net.mac_address = tempq;
 
-err1: return err;
-err2: return printf("device queue not found\n"), ERR_DEVICE_BAD_CONFIGURATION;
+    vn = virtio_net;
+
+    //Alloc RX buffers
+    const int rx_desc_size = 20;
+    vring_desc *rx_desc = (vring_desc*) calloc(rx_desc_size, sizeof(vring_desc));
+    for (int i = 0; i < rx_desc_size; i++) {
+        uint8_t *desc = (uint8_t*)malloc(NET_PACKET_SIZE);
+        rx_desc[i].addr = (uint32_t)desc;
+        rx_desc[i].len = NET_PACKET_SIZE;
+        rx_desc[i].flags = VIRTQ_DESC_F_WRITE;
+    }
+    virtio_send_descriptor(&vn, 0, rx_desc, rx_desc_size);
+
+    return 0;
+
+    //return printf("device queue not found\n"), ERR_DEVICE_BAD_CONFIGURATION;
 }
 
 // before = 0111_1001_1011_1111_1000_0000_0110_0100
@@ -53,7 +93,12 @@ void negotiate(uint32_t *features) {
 int virtio_init(virtio_device *virtio) {
     // 1 Get the pci addresses and reset the device if it's previously configured
     pci_device_t *pci_device;
-    if (!pci_get_device(VIRTIO_VENDOR_ID, VIRTIO_DEVICE_ID, pci_device)) goto err1;
+    
+    //No device found
+    if (!pci_get_device(VIRTIO_VENDOR_ID, VIRTIO_DEVICE_ID, pci_device)) 
+        return ERR_DEVICE_NOT_FOUND;
+
+
     virtio->vendor_id = pci_device->vendor_id;
     virtio->device_id = pci_device->device_id;
     virtio->bars = pci_device->bars;
@@ -78,7 +123,8 @@ int virtio_init(virtio_device *virtio) {
     outb(bar0_address + DEVICE_STATUS, VIRTIO_ACKNOWLEDGE | VIRTIO_DRIVER_LOADED | VIRTIO_FEATURES_OK);
 
     // 6 Re-read device status to ensure the FEATURES_OK bit is still set
-    if ((inb(bar0_address + DEVICE_STATUS) & VIRTIO_FEATURES_OK) == 0) goto err2;
+    if ((inb(bar0_address + DEVICE_STATUS) & VIRTIO_FEATURES_OK) == 0) 
+        return ERR_CONFIG_NOT_ACCEPTED;
 
     // 7 Perform device-specific setup
     virtio_init_queues(virtio, bar0_address);
@@ -87,61 +133,79 @@ int virtio_init(virtio_device *virtio) {
     outb(bar0_address + DEVICE_STATUS, VIRTIO_ACKNOWLEDGE | VIRTIO_DRIVER_LOADED | VIRTIO_FEATURES_OK | VIRTIO_DRIVER_READY);
 
     return 0;
-err1:
-    return printf("device not found\n"), ERR_DEVICE_NOT_FOUND;
-err2:
-    return printf("Features not accepted\n"), ERR_CONFIG_NOT_ACCEPTED;
 }
 
 void virtio_init_queues(virtio_device *virtio, uint32_t bar0_address) {
-    uint16_t q_addr = -1;
+    uint16_t q_addr = 0;
     uint16_t size   = -1;
 
-    while (size != 0)
+    while (q_addr < 2) // hardfix, should use (size != 0)
     {
-        q_addr++;
         // Write the queue address that we want to access
         outw(bar0_address + QUEUE_SELECT, q_addr);
         // Now read the size. The size is not the byte size but rather the element count.
         size = inw(bar0_address + QUEUE_SIZE);
         if (size > 0) virtio_init_queue(virtio, bar0_address, q_addr, size);
+        q_addr++;
     }
 
     virtio->queue_n = q_addr;
 }
 
+int virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_size) {
+    uint32_t size = vring_size(queue_size);
+    vring* vr = calloc(sizeof(vring), 1);
+    void* p = (void*)(ALIGN((size_t)calloc(size + 4095, 1)));
+    if (p == NULL) return ERR_MEMORY_ALLOCATION_ERROR;
 
+    vring_init(vr, queue_size, p, 4096);
+    outl(bar0_address + QUEUE_ADDRESS, ((size_t)vr->desc >> 12));
+    vr->avail->flags = 0;
+    virtio->queue[i] = *vr;
 
-void virtio_init_queue(virtio_device *virtio, uint32_t bar0_address, uint16_t i, uint16_t queue_n) {
-    // virt_queue* vq = &virtio->queue[i];
-    // memset(vq, 0, sizeof(virt_queue));
+    return 0;
+}
 
-    // // Create virtqueue memory
-    // uint32_t sizeof_buffers = (sizeof(queue_buffer) * queue_n);
-    // uint32_t sizeof_queue_available = (2 * sizeof(uint16_t)) + (queue_n * sizeof(uint16_t));
-    // uint32_t sizeof_queue_used = (2 * sizeof(uint16_t)) + (queue_n * sizeof(virtio_used_item));
+void virtio_enable_interrupts(vring* vq){
+    vq->used->flags = 0;
+}
+
+void virtio_disable_interrupts(vring* vq){
+    vq->used->flags = 1;
+}
+
+void virtio_send_descriptor(virtio_net_device* dev, uint8_t queue_index, vring_desc buffers[], int count)
+{
+
+    // Get the queue
+    vring* vq = &dev->queue[queue_index];
+
+    uint16_t desc_index = vq->desc_next_idx;
+    uint16_t next_buffer_index;
+
+    vring_desc *buf = &vq->desc[desc_index];
+
+    vq->avail->ring[vq->avail->idx % vq->num] = desc_index;
+    for (int i = 0; i < count; i++) {
+
+        next_buffer_index = (desc_index+1) % vq->num;
+
+        vq->desc[desc_index].flags = buffers[i].flags;
+
+        // Set the next flag if there are more buffers
+        if (i != (count-1)) vq->desc[desc_index].flags |= VIRTQ_DESC_F_NEXT;
+
+        vq->desc[desc_index].next = next_buffer_index;
+        vq->desc[desc_index].len = buffers[i].len;
+        
+        
+        vq->desc[desc_index].addr = buffers[i].addr;
+        desc_index = next_buffer_index;
+    }
+    vq->desc_next_idx = desc_index;
+
+    vq->avail->idx++;
+
     
-    // // Make totalSize a multiple of 4096
-    // uint32_t totalSize = sizeof_buffers + sizeof_queue_available + sizeof_queue_used;
-    // totalSize += 4095;
-    // totalSize &= ~4095;
-
-    // // Alloc the queue
-    // uint8_t* buf = (uint8_t*)malloc(totalSize);
-    // memset(buf, 0, totalSize);
-
-    // // Configure the queue
-    // vq->base_address = (uint64_t)buf;
-    // vq->available = (virtio_available*)&buf[sizeof_buffers];
-    // vq->used = (virtio_used*)&buf[(sizeof_buffers + sizeof_queue_available + 4095) & ~4095];
-    // vq->next_buffer = 0;
-    // vq->lock = 0;
-
-    // // Get the number of pages
-    // // Note: This step may not be necessary if you are passing the address directly and the device supports this
-    // uint32_t buf_page = ((uint64_t)vq->base_address) >> 12;
-    // // Inform the device the page address
-    // outl(bar0_address + 0x08, buf_page);
-    
-    // vq->available->flags = 0;
+    outw(dev->io_address + QUEUE_NOTIFY, queue_index);
 }

@@ -51,7 +51,7 @@ BOOT_DISK:
     db 0
 
 N_SECTORS:
-    db 40
+    db 80
 
 ; ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -83,7 +83,7 @@ gdt_start:                               ; needs to be after real mode code
         dw 0xffff                        ; 16 bits of the limit
         dw 0
         db 0
-        db 0b10010010                    ; presence, privilege, type and typeflags
+        db 0b10010010                    ; presence, privilege, type and type flags
         db 0b11001111                    ; other flags and limit
         db 0
 
@@ -103,7 +103,7 @@ start_protected_mode:
     mov es, ax                           ; setting es (extra data segment reg) to 0
     mov fs, ax                           ; setting fs (extra extra data segment reg) to 0
     mov gs, ax                           ; setting gs (extra extra extra data segment reg) to 0
-    mov ebp, 0x7ffff                     ; setting the base of the stack to 0x80000
+    mov ebp, 0x7fff0                     ; setting the base of the stack to 0x80000
     mov esp, ebp                         ; emptying the stack
 
     mov dword [0x7ff0], gdt_code         ; saving constant at specific address for reading from kernel later

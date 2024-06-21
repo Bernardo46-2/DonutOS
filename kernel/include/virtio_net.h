@@ -1,5 +1,4 @@
-#ifndef _VIRTIO_H_
-#define _VIRTIO_H_
+#pragma once
 
 #include "../../libc/include/types.h"
 #include "../include/pci.h"
@@ -9,7 +8,7 @@ typedef unsigned long long uint64_t;
 
 // Documentation:
 // See: https://ozlabs.org/~rusty/virtio-spec/virtio-0.9.5.pdf
-// See: http://docs.oasis-open.org/virtio/virtio/v1.0/cs04/virtio-v1.0-cs04.html
+// See: https://docs.oasis-open.org/virtio/virtio/v1.3/virtio-v1.3.pdf
 // See: http://www.dumais.io/index.php?article=aca38a9a2b065b24dfa1dee728062a12
 
 #define VIRTIO_VENDOR_ID 0x1AF4
@@ -62,6 +61,7 @@ typedef unsigned long long uint64_t;
 #define QUEUE_NOTIFY    0x10
 #define DEVICE_STATUS   0x12
 #define ISR_STATUS      0x13
+#define DEVICE_CONFIG   0x14
 
 #define TOTAL_SECTOR_COUNT    14
 #define MAXIMUM_SEGMENT_SIZE  1C
@@ -71,30 +71,45 @@ typedef unsigned long long uint64_t;
 #define SECTOR_COUNT          27
 #define BLOCK_LENGTH          28
 
+/* This marks a buffer as continuing via the next field. */
+#define VIRTQ_DESC_F_NEXT       1
+/* This marks a buffer as write-only (otherwise read-only). */
+#define VIRTQ_DESC_F_WRITE      2
+/* This means the buffer contains a list of buffer descriptors. */
+#define VIRTQ_DESC_F_INDIRECT   4
+
+#define NET_PACKET_SIZE 1514
+
+// Buffers[QueueSIze]
 typedef struct {
-    uint64_t addr;
-    uint32_t len;
-    uint16_t flags;
-    uint16_t next;
+    uint64_t addr;  // 64-bit address of the buffer on the guest machine.
+    uint32_t len;   // 32-bit length of the buffer.
+    uint16_t flags; // 1: Next field contains linked buffer index;  
+                    // 2: Buffer is write-only (clear for read-only).
+                    // 4: Buffer contains additional buffer addresses.
+    uint16_t next;  // If flag is set, contains index of next buffer in chain.
 } vring_desc;
 
+// Available
 typedef struct {
-    uint16_t flags;
-    uint16_t idx;
-    uint16_t used_event;
-    uint16_t ring[];
+    uint16_t flags;       // 1: Do not trigger interrupts.
+    uint16_t idx;         // Index of the next ring index to be used.  (Last available ring buffer index+1)
+    uint16_t ring[];      // [QueueSize] List of available buffer indexes from the Buffers array above.
+    //uint16_t used_event;  // Only used if VIRTIO_F_EVENT_IDX was negotiated
 } vring_avail;
 
+//  Ring
 typedef struct {
-    uint32_t id;
-    uint32_t len;
+    uint32_t id;   // Index of the used buffer in the Buffers array above.
+    uint32_t len;  // Total bytes written to buffer.
 } vring_used_elem;
 
+// Used
 typedef struct {
-    uint16_t flags;
-    uint16_t idx;
-    uint16_t avail_event;
-    vring_used_elem ring[];
+    uint16_t flags;         // 1: Do not notify device when buffers are added to available ring.
+    uint16_t idx;           // Index of the next ring index to be used.  (Last used ring buffer index+1)
+    vring_used_elem ring[]; // [QueueSize]
+    //uint16_t avail_event;   // Only used if VIRTIO_F_EVENT_IDX was negotiated
 } vring_used;
 
 typedef struct {
@@ -102,6 +117,7 @@ typedef struct {
     vring_desc  *desc;
     vring_avail *avail;
     vring_used  *used;
+    uint16_t desc_next_idx;
 } vring;
 
 #define ALIGN(x) (((x)+4095) & ~4095)
@@ -114,7 +130,11 @@ static inline void vring_init(vring *vr, unsigned int num, void *p, uint32_t ali
 	vr->num = num;
 	vr->desc = (vring_desc*)p;
 	vr->avail = (vring_avail *)((char *)p + num * sizeof(vring_desc));
-	vr->used = (vring_used*)(((uint32_t)&vr->avail->ring[num] + align - 1) & ~(align - 1));
+	vr->used = (vring_used*)(((size_t)&vr->avail->ring[num] + align - 1) & ~(align - 1));
+}
+
+static inline int vring_need_event(uint16_t event_idx, uint16_t new_idx, uint16_t old_idx){
+    return (uint16_t)(new_idx - event_idx - 1) < (uint16_t)(new_idx - old_idx);
 }
 
 typedef struct {
@@ -122,7 +142,7 @@ typedef struct {
     uint16_t   device_id;
     pci_bars   bars;
     uint8_t    irq;
-    // virt_queue queue[16];
+    vring      queue[16];
     uint64_t   queue_n;
 } virtio_device;
 
@@ -131,11 +151,28 @@ typedef struct {
     uint16_t   device_id;
     uint32_t   io_address;
     uint8_t    irq;
-    // virt_queue queue[3];
-    uint64_t   queue_n;
+    vring      queue[2];
     uint64_t   mac_address;
 } virtio_net_device;
 
-int virtio_net_init();
+#define VIRTIO_NET_HDR_F_NEEDS_CSUM 1
+#define VIRTIO_NET_HDR_GSO_NONE 0
+#define VIRTIO_NET_HDR_GSO_TCPV4 1
+#define VIRTIO_NET_HDR_GSO_UDP 3
+#define VIRTIO_NET_HDR_GSO_TCPV6 4
+#define VIRTIO_NET_HDR_GSO_ECN 0x80
 
-#endif
+struct virtio_net_hdr
+{
+    uint8_t flags;
+    uint8_t gso_type;
+    uint16_t hdr_len;
+    uint16_t gso_size;
+    uint16_t csum_start;
+    uint16_t csum_offset;
+};
+
+int virtio_net_init();
+void virtio_send_descriptor(virtio_net_device* dev, uint8_t queue_index, vring_desc buffers[], int count);
+
+extern virtio_net_device vn;

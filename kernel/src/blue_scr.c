@@ -8,7 +8,7 @@
 void blue_scr(int code, const char* message) {
     cli();
     tty_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLUE);
-    tty_clear_scr();
+    __tty_clear_scr();
 
     size_t msg_len = strlen(message);
     size_t pad_len = (VGA_WIDTH - msg_len - 5) / 2;

@@ -4,7 +4,7 @@
 #include "../../libc/include/types.h"
 
 void pic_send_eoi(uint8_t irq);
-void pic_remap();
+void pic_remap(int offset1, int offset2);
 void pic_init();
 
 void pic_set_mask(uint8_t irq_line);
