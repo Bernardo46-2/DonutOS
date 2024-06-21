@@ -9,7 +9,7 @@
 #include "../../libc/include/string.h"
 
 // #define CTX_DEBUG
-#define QUANTUM 1000
+#define QUANTUM 10
 
 static volatile size_t next_pid = 0;
 static volatile uint8_t scheduler_on = 0;
@@ -36,6 +36,8 @@ static int process_x() {
         x++;
 #ifndef CTX_DEBUG
         if(x % 50000000 == 0) {
+            // printf("x is at 0x%08x\n", &x);
+            // printf("*addr = 0x%08x\n", *(int*)(0x7fd70));
             printf("x = %d timer = %d\n", x, (int)timer_get());
         }
 #endif
@@ -47,7 +49,7 @@ static int process_y() {
     register int y = 0;
     printf("y start\n");
     while(1) {
-        y++;
+        y--;
 #ifndef CTX_DEBUG
         if(y % 50000000 == 0) {
             printf("y = %d timer = %d\n", y, (int)timer_get());
@@ -67,8 +69,8 @@ int spawn_process(regs_t* rs, int (*fn)(), size_t n_pages) {
     void* p = alloc_pages(n_pages);
     if(p == NULL) return 1;
     
-    const size_t stack_size = sizeof(regs_t)+4;
-    size_t* esp = (size_t*)p + (PAGE_SIZE * n_pages) - stack_size;
+    const size_t stack_size = sizeof(regs_t);
+    size_t* esp = (size_t*)((size_t)((size_t*)p + (PAGE_SIZE * n_pages) - stack_size) & 0xf);
     tcb_t* new_proc = (tcb_t*)malloc(sizeof(tcb_t));
 
     *new_proc = (tcb_t) {

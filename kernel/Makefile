@@ -9,7 +9,8 @@ else
 endif
 
 LD = ld
-LDFLAGS = -Ttext 0x8000 --oformat binary -m elf_i386 
+# LDFLAGS = -Ttext 0x8000 --oformat binary -m elf_i386 
+LDFLAGS = -Ttext 0x8000 -m elf_i386 
 
 AS = nasm
 ASFLAGS = -f elf
@@ -35,7 +36,8 @@ FULL_KERNEL = full_kernel.bin
 all: setup $(BUILD_DIR)/$(FULL_KERNEL)
 
 $(BUILD_DIR)/$(FULL_KERNEL): $(KERNEL_OBJS)
-	$(LD) -o $@ $(LDFLAGS) $(FIRST_LINKER_OBJS) $(OTHER_LINKER_OBJS) $(LIBC_OBJS)
+	$(LD) -o $(BUILD_DIR)/full_kernel.elf $(LDFLAGS) $(FIRST_LINKER_OBJS) $(OTHER_LINKER_OBJS) $(LIBC_OBJS)
+	objcopy -O binary $(BUILD_DIR)/full_kernel.elf $@
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@

@@ -22,6 +22,8 @@ I used a [tutorial](https://youtube.com/playlist?list=PLm3B56ql_akNcvH8vvJRYOc7T
 
 Still talking about the cross compiler, we also tried using regular gcc instead and it works.. to a certain extent. While gcc does have flags that allow you to set the target machine that you want it to compile to, as well as flags to not use system dependencies, some things still bug out. For instance, if you try to divide by 0 to force an exception (which this OS will throw a blue screen), it will be caught by the cross compiler and it'll call the exception handler, but regular gcc will just ignores it and nothing happens. With that said, everything else seemed to work just fine with gcc instead of the cross compiler but it's obviously not reliable. Use the cross compiler if you can, and gcc only as a second option (the makefile should be handling already).
 
+Finally, for the network sniffer, you'll notice a `tap0.sh` file on the root folder, which is a virtual network card that will send the received packages to the QEMU virtual machine. That needs to be run before running the OS.
+
 
 **TL;DR**
 
@@ -39,6 +41,3 @@ Just open the project's root folder and
 
 ### Windows:
 Good luck!
-
-## TO DO
-- Process scheduling
