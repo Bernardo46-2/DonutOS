@@ -34,6 +34,8 @@ you'll need:
 
 ## How to run
 ### Linux:
+Since we're receiving packages, you'll have to `sudo` when running it.
+
 Just open the project's root folder and 
 - `make all` to compile it
 - `make run` to compile and run it
