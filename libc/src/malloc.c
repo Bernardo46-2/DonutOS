@@ -100,6 +100,30 @@ void* calloc(const size_t size, const size_t reg_size) {
     return (void*)array;
 }
 
+void* realloc(void* ptr, size_t size) {
+    if(ptr == NULL) return malloc(size);
+    if(size == 0) {
+        free(ptr);
+        return NULL;
+    }
+    
+    AllocHeader* p = (AllocHeader*)ptr;
+    
+    void* new_ptr = malloc(size);
+    if(new_ptr == NULL) return NULL;
+    
+    AllocHeader* new_p = (AllocHeader*)new_ptr;
+
+    size_t copy_size = size < p->size ? size : p->size;
+    for(size_t i = 0; i < copy_size; i++) {
+        ((uint8_t*)new_ptr)[i] = ((uint8_t*)ptr)[i];
+    }
+
+    free(ptr);
+    
+    return new_ptr;
+}
+
 void free(void* ptr) {
     AllocHeader* p = (AllocHeader*)ptr;
     (--p)->is_free = 1;
