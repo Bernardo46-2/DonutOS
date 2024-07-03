@@ -7,6 +7,7 @@
 #include "../../libc/include/string.h"
 #include "../../libc/include/malloc.h"
 #include "../../libc/include/net.h"
+#include "../../libc/include/vector.h"
 
 
 // TODO
@@ -15,12 +16,15 @@
 #define VENDOR_ID 0x10EC
 #define DEVICE_ID 0x8139
 
+#define MAX_PACKETS 256
+
 uint8_t* rx_buffer;
 uint32_t ioaddr;
 uint8_t mac_addr[6];
 uint32_t current_packet_ptr;
 long bytes_received = 0;
 struct EthernetHeader* ethHeaders;
+Vector* ethRawBuffer;
 int firstHeader = 0;
 int nHeaders = 0;
 
@@ -34,12 +38,17 @@ void parseTCPHeader(const uint8_t *frame, struct TCPHeader *tcpHeader);
 void parseUDPHeader(const uint8_t *frame, struct UDPHeader *udpHeader);
 
 int getHeaderIndex(const int i) {
-    return (firstHeader + i) % 256;
+    return (firstHeader + i) % MAX_PACKETS;
+}
+
+void * ethRawCopy(void * dst, const void * src) {
+    int length = ((uint16_t *) src) + 1;
+    memcpy(dst, src, length);
 }
 
 void removeFirstHeader() {
     free(&ethHeaders[getHeaderIndex(firstHeader)]);
-    firstHeader = (firstHeader + 1) % 256;
+    firstHeader = (firstHeader + 1) % MAX_PACKETS;
     nHeaders--;
 }
 
@@ -67,7 +76,7 @@ void receive_packet() {
     //////////////////////////////// AQUI COMECA A PILHA DE PROTOCOLOS ////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // ethernet_handle_packet(packet, packet_length);
-    if (nHeaders == 256) {
+    if (nHeaders == MAX_PACKETS) {
         removeFirstHeader();
     }
     ethHeaders[getHeaderIndex(nHeaders)] = process_received_packet(frame, frame_length);
@@ -99,7 +108,7 @@ void rtl8139_init() {
     rx_buffer = (uint8_t*)malloc(RX_TOTAL_BUFFER_SIZE);
     outl(ioaddr + RBSTART, (size_t)rx_buffer); // send uint32_t memory location to RBSTART (0x30)
     ethHeaders = (struct EthernetHeader*)malloc(256 * sizeof(struct EthernetHeader));
-
+    ethRawBuffer = vector_init(sizeof(uint8_t*), MAX_PACKETS, ethRawCopy,free);
 
     // Set IMR + ISR
     outw(ioaddr + IMR, TOK | ROK); // Habilita IRQs para TOK e ROK apenas
