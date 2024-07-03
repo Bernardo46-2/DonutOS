@@ -1,6 +1,6 @@
 #pragma once
-#include <stdio.h>
-#include <types.h>
+#include "stdio.h"
+#include "types.h"
 
 // Define a structure for the generic vector
 typedef struct {
@@ -29,6 +29,10 @@ bool vector_set(Vector* vector, size_t index, const void* element);
 // Function to free the vector's memory
 void vector_free(Vector* vector);
 
-// Example element copy and free functions for integers
-void int_copy(void* dest, const void* src);
-void int_free(void* element);
+void no_free(void* element);
+
+void unit8_copy(void* dest, const void* src);
+
+void unit16_copy(void* dest, const void* src);
+
+void unit32_copy(void* dest, const void* src);

@@ -1,5 +1,5 @@
-#include <stdlib.h>
-#include <types.h>
+#include "stdlib.h"
+#include "types.h"
 
 // Define a structure for the generic vector
 typedef struct {
@@ -65,11 +65,23 @@ void vector_free(Vector* vector) {
     free(vector);
 }
 
-// Example element copy and free functions for integers
-void int_copy(void* dest, const void* src) {
-    *(int*)dest = *(const int*)src;
+void no_free(void* element) {
+    // Do nothing
 }
 
-void int_free(void* element) {
-    // No need to free anything for integers
+
+void unit8_copy(void* dest, const void* src) {
+    *(uint8_t*)dest = *(const uint8_t*)src;
+}
+
+void unit16_copy(void* dest, const void* src) {
+    *(uint16_t*)dest = *(const uint16_t*)src;
+}
+
+void unit32_copy(void* dest, const void* src) {
+    *(uint32_t*)dest = *(const uint32_t*)src;
+}
+
+void size_t_copy(void* dest, const void* src) {
+    *(size_t*)dest = *(const size_t*)src;
 }
