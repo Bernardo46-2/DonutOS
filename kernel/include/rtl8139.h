@@ -18,8 +18,10 @@
 #define ROK 0x01  // Receive OK Interrupt: Bit 0
 #define TOK 0x04  // Transmit OK Interrupt: Bit 2
 
-#define RX_TOTAL_BUFFER_SIZE 9708  // 8192 + 16 + 1500 bytes
-#define RX_BUFFER_SIZE 8192
+#define ETHERNET_MAX_FRAME_SIZE 1518
+#define RX_ETHERNET_MAX_FRAME_COUNT 256
+#define RX_BUFFER_SIZE (ETHERNET_MAX_FRAME_SIZE * RX_ETHERNET_MAX_FRAME_COUNT)
+#define RX_TOTAL_BUFFER_SIZE (RX_BUFFER_SIZE + 16 + 1500)
 #define RX_READ_POINTER_MASK (~3)
 typedef struct {
     uint16_t vendor_id;

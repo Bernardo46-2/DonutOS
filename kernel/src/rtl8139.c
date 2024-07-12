@@ -24,6 +24,8 @@ struct EthernetHeader* ethHeaders;
 int firstHeader = 0;
 int nHeaders = 0;
 
+
+
 extern struct EthernetHeader process_received_packet(void* packet, uint16_t packet_length);
 
 void parseEthernetHeader(const uint8_t *frame, struct EthernetHeader *ethernetHeader);
@@ -33,6 +35,8 @@ void parseIPv6Header(const uint8_t *frame, struct IPv6Header *ipv6Header);
 void parseTCPHeader(const uint8_t *frame, struct TCPHeader *tcpHeader);
 void parseUDPHeader(const uint8_t *frame, struct UDPHeader *udpHeader);
 
+
+
 int getHeaderIndex(const int i) {
     return (firstHeader + i) % 256;
 }
@@ -41,6 +45,14 @@ void removeFirstHeader() {
     free(&ethHeaders[getHeaderIndex(firstHeader)]);
     firstHeader = (firstHeader + 1) % 256;
     nHeaders--;
+}
+
+void addHeader(struct EthernetHeader* ethHeader) {
+    if (nHeaders == 256) {
+        removeFirstHeader();
+    }
+    ethHeaders[getHeaderIndex(nHeaders) ] = *ethHeader;
+    nHeaders++;
 }
 
 struct EthernetHeader* rtl8139_get_ethHeader(int i) {
@@ -67,11 +79,8 @@ void receive_packet() {
     //////////////////////////////// AQUI COMECA A PILHA DE PROTOCOLOS ////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // ethernet_handle_packet(packet, packet_length);
-    if (nHeaders == 256) {
-        removeFirstHeader();
-    }
-    ethHeaders[getHeaderIndex(nHeaders)] = process_received_packet(frame, frame_length);
-    nHeaders++;
+    struct EthernetHeader ethHeader = process_received_packet(frame, frame_length);
+    addHeader(&ethHeader);
 
     // Atualizando o ponteiro de pacote considerando alinhamento
     current_packet_ptr = ((current_packet_ptr + frame_length + 3) & RX_READ_POINTER_MASK) % RX_BUFFER_SIZE;
